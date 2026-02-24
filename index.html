@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BioMon — Whole Body Monitoring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --bg:       #080c14;
+  --bg2:      #0d1321;
+  --bg3:      #111827;
+  --panel:    #131d2e;
+  --border:   #1e3048;
+  --accent:   #00d4ff;
+  --accent2:  #00ff9d;
+  --accent3:  #ff4d6d;
+  --accent4:  #ffd60a;
+  --accent5:  #bf5af2;
+  --text:     #c8d8f0;
+  --text-dim: #4a6a8a;
+  --text-hi:  #e8f4ff;
+  --glow:     0 0 20px rgba(0,212,255,0.3);
+  --glow2:    0 0 20px rgba(0,255,157,0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Exo 2', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+header {
+  position:sticky; top:0; z-index:100;
+  background: rgba(8,12,20,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display:flex; align-items:center; justify-content:space-between;
+  height:60px;
+}
+.logo {
+  font-family:'Rajdhani',sans-serif;
+  font-size:1.6rem; font-weight:700;
+  letter-spacing:0.2em;
+  color: var(--accent);
+  text-shadow: var(--glow);
+}
+.logo span { color: var(--accent2); }
+
+.live-dot {
+  display:inline-block; width:8px; height:8px;
+  background: var(--accent2);
+  border-radius:50%;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+  margin-right:6px;
+  box-shadow: 0 0 8px var(--accent2);
+}
+@keyframes pulse-dot {
+  0%,100%{opacity:1;transform:scale(1);}
+  50%{opacity:0.5;transform:scale(0.8);}
+}
+.live-label { font-size:0.75rem; letter-spacing:0.1em; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
+
+.header-right { display:flex; align-items:center; gap:16px; }
+
+.clock {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.85rem;
+  color:var(--text-dim);
+  letter-spacing:0.05em;
+}
+
+.role-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display:flex; align-items:center; gap:8px;
+  height:48px;
+  position:relative; z-index:99;
+}
+.role-label { font-size:0.7rem; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; margin-right:8px; font-family:'Rajdhani',sans-serif; }
+.role-btn {
+  padding: 5px 18px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.85rem;
+  font-weight:600;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  cursor:pointer;
+  border-radius:2px;
+  transition: all 0.2s;
+}
+.role-btn:hover { border-color: var(--accent); color:var(--accent); }
+.role-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); box-shadow: var(--glow); }
+.role-btn[data-role="doctor"].active  { background:var(--accent3); border-color:var(--accent3); box-shadow: 0 0 20px rgba(255,77,109,0.4); }
+.role-btn[data-role="trainer"].active { background:var(--accent2); border-color:var(--accent2); box-shadow: var(--glow2); color:var(--bg);}
+.role-btn[data-role="coach"].active   { background:var(--accent4); border-color:var(--accent4); box-shadow: 0 0 20px rgba(255,214,10,0.4); color:var(--bg);}
+
+.role-desc { margin-left:auto; font-size:0.72rem; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+
+.view-tabs {
+  background: var(--bg2);
+  border-bottom: 2px solid var(--border);
+  padding: 0 24px;
+  display:flex; gap:0;
+  position:sticky; top:60px; z-index:98;
+}
+.view-tab {
+  padding:12px 24px;
+  border:none; background:none;
+  color:var(--text-dim);
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.9rem; font-weight:600;
+  letter-spacing:0.1em; text-transform:uppercase;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  margin-bottom:-2px;
+  transition: all 0.2s;
+}
+.view-tab:hover { color:var(--text); }
+.view-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+main { position:relative; z-index:1; padding: 24px; }
+
+.kpi-row {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap:12px;
+  margin-bottom:24px;
+}
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius:4px;
+  padding:16px 20px;
+  position:relative;
+  overflow:hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor:default;
+}
+.kpi::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: var(--kpi-color, var(--accent));
+}
+.kpi:hover { border-color: var(--kpi-color, var(--accent)); box-shadow: 0 0 16px rgba(0,212,255,0.15); }
+.kpi-label { font-size:0.68rem; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; font-family:'Rajdhani',sans-serif; margin-bottom:6px; }
+.kpi-value { font-family:'Rajdhani',sans-serif; font-size:2rem; font-weight:700; color:var(--text-hi); line-height:1; }
+.kpi-unit  { font-size:0.75rem; color:var(--text-dim); margin-left:3px; }
+.kpi-sub   { font-size:0.72rem; color:var(--text-dim); margin-top:4px; }
+.kpi-trend { position:absolute; top:14px; right:14px; font-size:0.7rem; font-family:'JetBrains Mono',monospace; }
+.trend-up { color:var(--accent2); } .trend-dn { color:var(--accent3); }
+
+.chart-grid {
+  display:grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap:16px;
+  margin-bottom:24px;
+}
+.chart-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius:4px;
+  padding:18px 20px;
+  overflow:hidden;
+}
+.chart-card.col-8  { grid-column: span 8; }
+.chart-card.col-6  { grid-column: span 6; }
+.chart-card.col-4  { grid-column: span 4; }
+.chart-card.col-3  { grid-column: span 3; }
+.chart-card.col-12 { grid-column: span 12; }
+
+@media(max-width:1100px) {
+  .chart-card.col-8,.chart-card.col-6,.chart-card.col-4,.chart-card.col-3,.chart-card.col-12 { grid-column:span 12; }
+}
+@media(min-width:1101px) and (max-width:1400px) {
+  .chart-card.col-8 { grid-column:span 8; }
+  .chart-card.col-6 { grid-column:span 6; }
+  .chart-card.col-4 { grid-column:span 4; }
+  .chart-card.col-3 { grid-column:span 6; }
+}
+
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.card-title {
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.85rem; font-weight:600;
+  letter-spacing:0.15em; text-transform:uppercase;
+  color:var(--text-dim);
+}
+.card-badge {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.68rem;
+  padding:2px 8px;
+  border-radius:2px;
+  background:rgba(0,212,255,0.1);
+  color:var(--accent);
+  border:1px solid rgba(0,212,255,0.2);
+}
+.card-badge.green  { background:rgba(0,255,157,0.1); color:var(--accent2); border-color:rgba(0,255,157,0.2); }
+.card-badge.red    { background:rgba(255,77,109,0.1); color:var(--accent3); border-color:rgba(255,77,109,0.2); }
+.card-badge.yellow { background:rgba(255,214,10,0.1); color:var(--accent4); border-color:rgba(255,214,10,0.2); }
+
+canvas { max-height:220px; }
+.ecg-canvas { max-height:140px !important; }
+
+.sleep-bar-container { margin-top:8px; }
+.sleep-stage-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.sleep-stage-label { font-size:0.72rem; font-family:'JetBrains Mono',monospace; color:var(--text-dim); width:50px; }
+.sleep-bar-bg { flex:1; height:10px; background:var(--bg3); border-radius:2px; overflow:hidden; }
+.sleep-bar-fill { height:100%; border-radius:2px; transition:width 0.6s ease; }
+.sleep-stage-val { font-size:0.72rem; font-family:'JetBrains Mono',monospace; color:var(--text); width:35px; text-align:right; }
+
+.cycle-ring { display:flex; align-items:center; justify-content:center; margin:10px 0; }
+.phase-pill { padding:6px 18px; border-radius:20px; font-family:'Rajdhani',sans-serif; font-size:0.9rem; font-weight:600; letter-spacing:0.1em; }
+.phase-1 { background:rgba(255,77,109,0.2);   color:var(--accent3); border:1px solid var(--accent3); }
+.phase-2 { background:rgba(0,212,255,0.15);   color:var(--accent);  border:1px solid var(--accent); }
+.phase-3 { background:rgba(0,255,157,0.15);   color:var(--accent2); border:1px solid var(--accent2); }
+.phase-4 { background:rgba(191,90,242,0.15);  color:var(--accent5); border:1px solid var(--accent5); }
+.cycle-days { font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--text-dim); text-align:center; margin-top:6px; }
+
+.fall-alert {
+  background:rgba(255,77,109,0.1);
+  border:1px solid var(--accent3);
+  border-radius:4px;
+  padding:12px 16px;
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:16px;
+  animation: flash-border 1s ease-in-out infinite;
+}
+.fall-alert.hidden { display:none; }
+@keyframes flash-border {
+  0%,100%{border-color:var(--accent3);}
+  50%{border-color:rgba(255,77,109,0.3);}
+}
+.fall-icon { font-size:1.5rem; }
+.fall-text { font-family:'Rajdhani',sans-serif; font-size:0.9rem; font-weight:600; color:var(--accent3); }
+.fall-time { font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--text-dim); }
+
+.body-comp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px; }
+.comp-item { text-align:center; }
+.comp-ring {
+  width:70px; height:70px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 6px;
+}
+.comp-val { font-family:'Rajdhani',sans-serif; font-size:1.1rem; font-weight:700; color:var(--text-hi); }
+.comp-lbl { font-size:0.65rem; letter-spacing:0.1em; color:var(--text-dim); text-transform:uppercase; }
+
+.gauge-wrap { display:flex; align-items:center; justify-content:center; margin:8px 0; }
+.gauge-num { font-family:'Rajdhani',sans-serif; font-size:2.5rem; font-weight:700; color:var(--text-hi); text-align:center; }
+.gauge-label { font-size:0.7rem; color:var(--text-dim); text-align:center; font-family:'JetBrains Mono',monospace; }
+
+.restricted { position:relative; }
+.restricted::after {
+  content:'🔒 ACCESS RESTRICTED FOR THIS ROLE';
+  position:absolute; inset:0;
+  background:rgba(8,12,20,0.85);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.8rem; letter-spacing:0.15em;
+  color:var(--text-dim);
+  border-radius:4px;
+  z-index:10;
+}
+
+.view-panel { display:none; }
+.view-panel.active { display:block; }
+
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+.antioxidant-bar {
+  height:16px; background:var(--bg3); border-radius:2px; margin-top:8px; overflow:hidden;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+.antioxidant-fill {
+  height:100%;
+  background: linear-gradient(90deg, #ff4d6d, #ffd60a, #00ff9d);
+  border-radius:2px;
+  transition: width 0.6s;
+}
+
+.readiness-wrap { text-align:center; padding:10px; }
+.readiness-score { font-family:'Rajdhani',sans-serif; font-size:3.5rem; font-weight:700; line-height:1; }
+.readiness-score.high   { color:var(--accent2); text-shadow:var(--glow2); }
+.readiness-score.medium { color:var(--accent4); }
+.readiness-score.low    { color:var(--accent3); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BIO<span>MON</span></div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span><span class="live-dot"></span><span class="live-label">LIVE SYNC</span></span>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+  <div class="header-right">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dim)">
+      ATHLETE: <span style="color:var(--accent)">J. WILLIAMS #23</span>
+    </div>
+  </div>
+</header>
+
+<div class="role-bar">
+  <span class="role-label">View as:</span>
+  <button class="role-btn active" data-role="athlete" onclick="setRole('athlete')">Athlete</button>
+  <button class="role-btn" data-role="doctor"  onclick="setRole('doctor')">Team Doctor</button>
+  <button class="role-btn" data-role="trainer" onclick="setRole('trainer')">Trainer</button>
+  <button class="role-btn" data-role="coach"   onclick="setRole('coach')">Coach</button>
+  <div class="role-desc" id="role-desc">Full biometric access — all 15 metrics</div>
+</div>
+
+<div class="view-tabs">
+  <button class="view-tab active" onclick="setView('overview')">Overview</button>
+  <button class="view-tab" onclick="setView('vitals')">Vitals &amp; Cardio</button>
+  <button class="view-tab" onclick="setView('recovery')">Recovery &amp; Sleep</button>
+  <button class="view-tab" onclick="setView('performance')">Performance</button>
+</div>
+
+<div id="fall-alert" class="fall-alert hidden" style="margin:16px 24px 0;">
+  <span class="fall-icon">⚠️</span>
+  <div>
+    <div class="fall-text">FALL DETECTED</div>
+    <div class="fall-time" id="fall-time">Today at --:--</div>
+  </div>
+  <button onclick="document.getElementById('fall-alert').classList.add('hidden')"
+    style="margin-left:auto;background:none;border:1px solid var(--accent3);color:var(--accent3);
+    padding:4px 12px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:0.8rem;
+    letter-spacing:0.1em;border-radius:2px;">DISMISS</button>
+</div>
+
+<main>
+
+<!-- OVERVIEW -->
+<div class="view-panel active" id="view-overview">
+  <div class="kpi-row" id="kpi-row"></div>
+  <div class="chart-grid">
+    <div class="chart-card col-8">
+      <div class="card-header">
+        <span class="card-title">Heart Rate — 7-Day Trend</span>
+        <span class="card-badge" id="hr-badge">-- bpm</span>
+      </div>
+      <canvas id="chart-hr"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-energy">
+      <div class="card-header"><span class="card-title">Energy Score</span></div>
+      <div class="readiness-wrap">
+        <div class="readiness-score high" id="energy-big">--</div>
+        <div class="gauge-label">/ 100</div>
+        <div style="margin-top:8px;font-size:0.72rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace" id="energy-label">Calculating...</div>
+      </div>
+      <canvas id="chart-energy" style="max-height:100px"></canvas>
+    </div>
+    <div class="chart-card col-6">
+      <div class="card-header">
+        <span class="card-title">Steps — Daily</span>
+        <span class="card-badge green" id="steps-badge">-- steps</span>
+      </div>
+      <canvas id="chart-steps"></canvas>
+    </div>
+    <div class="chart-card col-6">
+      <div class="card-header">
+        <span class="card-title">Calories Burned</span>
+        <span class="card-badge" id="cal-badge">-- kcal</span>
+      </div>
+      <canvas id="chart-calories"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-spo2">
+      <div class="card-header"><span class="card-title">Blood Oxygen SpO2</span></div>
+      <canvas id="chart-spo2"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-stress">
+      <div class="card-header"><span class="card-title">Stress Level</span></div>
+      <canvas id="chart-stress"></canvas>
+    </div>
+    <div class="chart-card col-4">
+      <div class="card-header"><span class="card-title">Active Minutes</span></div>
+      <canvas id="chart-active"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- VITALS & CARDIO -->
+<div class="view-panel" id="view-vitals">
+  <div class="chart-grid">
+    <div class="chart-card col-12" id="card-ecg">
+      <div class="card-header">
+        <span class="card-title">ECG Waveform — Live</span>
+        <span class="card-badge green">NSR — Normal Sinus Rhythm</span>
+      </div>
+      <canvas id="chart-ecg" class="ecg-canvas"></canvas>
+    </div>
+    <div class="chart-card col-6" id="card-bp">
+      <div class="card-header">
+        <span class="card-title">Blood Pressure</span>
+        <span class="card-badge" id="bp-badge">--/-- mmHg</span>
+      </div>
+      <canvas id="chart-bp"></canvas>
+    </div>
+    <div class="chart-card col-6">
+      <div class="card-header"><span class="card-title">HR Zone Distribution</span></div>
+      <canvas id="chart-hrzone"></canvas>
+    </div>
+    <div class="chart-card col-6" id="card-hrv">
+      <div class="card-header"><span class="card-title">Heart Rate — 24h Detail</span></div>
+      <canvas id="chart-hr24"></canvas>
+    </div>
+    <div class="chart-card col-6" id="card-antioxidant">
+      <div class="card-header">
+        <span class="card-title">Antioxidant Index (Carotenoids)</span>
+        <span class="card-badge yellow" id="anti-badge">--</span>
+      </div>
+      <div class="gauge-wrap" style="flex-direction:column;gap:4px;margin-top:16px;">
+        <div class="gauge-num" id="anti-num" style="color:var(--accent4)">--</div>
+        <div class="gauge-label">Score / 100</div>
+      </div>
+      <div class="antioxidant-bar"><div class="antioxidant-fill" id="anti-bar" style="width:0%"></div></div>
+      <div style="margin-top:8px;font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">
+        Optimal range: 45–70 · Measured via skin carotenoid sensor
+      </div>
+      <canvas id="chart-antioxidant" style="max-height:80px;margin-top:12px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- RECOVERY & SLEEP -->
+<div class="view-panel" id="view-recovery">
+  <div class="chart-grid">
+    <div class="chart-card col-6" id="card-sleep">
+      <div class="card-header">
+        <span class="card-title">Sleep Stages</span>
+        <span class="card-badge" id="sleep-total-badge">-- hrs</span>
+      </div>
+      <canvas id="chart-sleep"></canvas>
+      <div class="sleep-bar-container" id="sleep-bars"></div>
+    </div>
+    <div class="chart-card col-6" id="card-apnea">
+      <div class="card-header">
+        <span class="card-title">Sleep Apnea Events</span>
+        <span class="card-badge" id="apnea-badge">-- events</span>
+      </div>
+      <canvas id="chart-apnea"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-menstrual">
+      <div class="card-header"><span class="card-title">Menstrual Cycle</span></div>
+      <div class="cycle-ring">
+        <div class="phase-pill phase-2" id="cycle-phase-pill">Follicular</div>
+      </div>
+      <div class="cycle-days" id="cycle-days-info">Day 9 of cycle · Next period in ~19 days</div>
+      <canvas id="chart-cycle" style="max-height:120px;margin-top:12px"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-body">
+      <div class="card-header"><span class="card-title">Body Composition</span></div>
+      <div class="body-comp-grid">
+        <div class="comp-item">
+          <div class="comp-ring" style="border:3px solid var(--accent3)"><span class="comp-val" id="bc-fat">--</span></div>
+          <div class="comp-lbl">Body Fat %</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-ring" style="border:3px solid var(--accent2)"><span class="comp-val" id="bc-muscle">--</span></div>
+          <div class="comp-lbl">Muscle kg</div>
+        </div>
+        <div class="comp-item">
+          <div class="comp-ring" style="border:3px solid var(--accent)"><span class="comp-val" id="bc-bmi">--</span></div>
+          <div class="comp-lbl">BMI</div>
+        </div>
+      </div>
+      <canvas id="chart-body" style="max-height:100px;margin-top:12px"></canvas>
+    </div>
+    <div class="chart-card col-4" id="card-recovery-score">
+      <div class="card-header"><span class="card-title">Readiness Score</span></div>
+      <div class="readiness-wrap">
+        <div class="readiness-score high" id="readiness-big">--</div>
+        <div class="gauge-label">READINESS / 100</div>
+        <div style="margin-top:12px;font-size:0.7rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">
+          Based on sleep, HRV, SpO2, stress
+        </div>
+      </div>
+      <canvas id="chart-readiness" style="max-height:90px;margin-top:8px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- PERFORMANCE -->
+<div class="view-panel" id="view-performance">
+  <div class="chart-grid">
+    <div class="chart-card col-6">
+      <div class="card-header"><span class="card-title">Performance Radar</span></div>
+      <canvas id="chart-radar"></canvas>
+    </div>
+    <div class="chart-card col-6">
+      <div class="card-header"><span class="card-title">Weekly Activity Summary</span></div>
+      <canvas id="chart-weekly"></canvas>
+    </div>
+    <div class="chart-card col-12">
+      <div class="card-header"><span class="card-title">Active Minutes — 7 Days</span></div>
+      <canvas id="chart-active-trend"></canvas>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// =====================================================================
+// FAKE DATA ENGINE
+// To connect real data: replace genSummary(), genTimeline(), genECG()
+// with fetch() calls to server.py endpoints:
+//   fetch('/api/summary'), fetch('/api/timeline'), fetch('/api/ecg')
+// =====================================================================
+
+const ROLES = {
+  athlete: {
+    label: 'Full biometric access — all 15 metrics',
+    visible: ['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness'],
+    color: '#00d4ff'
+  },
+  doctor: {
+    label: 'Clinical view — all 15 metrics + alerts',
+    visible: ['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness'],
+    color: '#ff4d6d'
+  },
+  trainer: {
+    label: 'Training view — 10 metrics (no ECG, menstrual, antioxidant)',
+    visible: ['hr','energy','steps','calories','spo2','stress','active','bp','sleep','body','readiness','hrv'],
+    color: '#00ff9d'
+  },
+  coach: {
+    label: 'Performance view — 5 metrics (steps, HR, energy, active, readiness)',
+    visible: ['hr','energy','steps','calories','active','readiness'],
+    color: '#ffd60a'
+  }
+};
+
+let currentRole = 'athlete';
+let DATA = {};
+let charts = {};
+
+function rnd(lo, hi) { return Math.round(lo + Math.random() * (hi - lo)); }
+
+function genTimeline(days = 7) {
+  const labels = [], hrData = [], stepsData = [], calData = [], spo2Data = [],
+        stressData = [], activeData = [], sbpData = [], dbpData = [],
+        energyData = [], apneaData = [], antiData = [], readinessData = [];
+  for (let d = days - 1; d >= 0; d--) {
+    const date = new Date(); date.setDate(date.getDate() - d);
+    labels.push(date.toLocaleDateString('en', { weekday:'short', month:'short', day:'numeric' }));
+    hrData.push(rnd(65, 85));
+    stepsData.push(rnd(5000, 13000));
+    calData.push(rnd(1600, 2900));
+    spo2Data.push(+(97 + Math.random() * 2.5).toFixed(1));
+    stressData.push(rnd(25, 70));
+    activeData.push(rnd(25, 95));
+    sbpData.push(rnd(112, 130));
+    dbpData.push(rnd(72, 88));
+    energyData.push(rnd(55, 95));
+    apneaData.push(rnd(0, 10));
+    antiData.push(rnd(40, 72));
+    readinessData.push(rnd(60, 95));
+  }
+  return { labels, hrData, stepsData, calData, spo2Data, stressData, activeData,
+           sbpData, dbpData, energyData, apneaData, antiData, readinessData };
+}
+
+function genECG(beats = 8) {
+  const pts = [];
+  for (let b = 0; b < beats; b++) {
+    for (let i = 0; i < 200; i++) {
+      const p = i / 200;
+      let v = 0;
+      if      (p < 0.10) v =  0.05 * Math.sin(Math.PI * p / 0.10);
+      else if (p < 0.15) v = -0.10 * Math.sin(Math.PI * (p - 0.10) / 0.05);
+      else if (p < 0.20) v =  1.20 * Math.sin(Math.PI * (p - 0.15) / 0.05);
+      else if (p < 0.25) v = -0.20 * Math.sin(Math.PI * (p - 0.20) / 0.05);
+      else if (p < 0.45) v =  0.30 * Math.sin(Math.PI * (p - 0.25) / 0.20);
+      v += (Math.random() - 0.5) * 0.03;
+      pts.push(+v.toFixed(4));
+    }
+  }
+  return pts;
+}
+
+function genSummary() {
+  const phases = ['Menstrual','Follicular','Ovulation','Luteal'];
+  return {
+    steps:   rnd(7200, 11500),
+    calories: rnd(1900, 2700),
+    active_min: rnd(35, 85),
+    hr:      rnd(68, 78),
+    resting_hr: rnd(54, 64),
+    spo2:    +(97.5 + Math.random() * 1.5).toFixed(1),
+    stress:  rnd(28, 58),
+    sbp:     rnd(115, 128),
+    dbp:     rnd(74, 85),
+    energy:  rnd(62, 92),
+    antioxidant: rnd(45, 70),
+    body_fat: +(18.5 + Math.random() * 0.5).toFixed(1),
+    muscle_kg: +(42 + Math.random() * 0.4).toFixed(1),
+    bmi:     +(22.4 + Math.random() * 0.2).toFixed(1),
+    sleep_deep:  +(1.2 + Math.random() * 0.6).toFixed(1),
+    sleep_light: +(3.0 + Math.random() * 1.0).toFixed(1),
+    sleep_rem:   +(1.5 + Math.random() * 1.0).toFixed(1),
+    apnea:   rnd(0, 7),
+    menstrual_phase: phases[Math.floor(Math.random() * 4)],
+    cycle_day: rnd(1, 28),
+    readiness: rnd(65, 95),
+    fall: Math.random() < 0.15,
+  };
+}
+
+const CD = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(8,12,20,0.9)',
+      borderColor: 'rgba(0,212,255,0.3)', borderWidth: 1,
+      titleColor: '#c8d8f0', bodyColor: '#00d4ff',
+      titleFont: { family:"'JetBrains Mono',monospace", size:11 },
+      bodyFont:  { family:"'Rajdhani',sans-serif", size:13 }
+    }
+  },
+  scales: {
+    x: { grid:{ color:'rgba(30,48,72,0.5)' }, ticks:{ color:'#4a6a8a', font:{ family:"'JetBrains Mono',monospace", size:10 } } },
+    y: { grid:{ color:'rgba(30,48,72,0.5)' }, ticks:{ color:'#4a6a8a', font:{ family:"'JetBrains Mono',monospace", size:10 } } }
+  },
+  animation: { duration:800, easing:'easeInOutQuart' }
+};
+
+function lineds(label, data, color, fill=true) {
+  return {
+    label, data,
+    borderColor: color,
+    backgroundColor: fill ? color.replace('rgb(','rgba(').replace(')',',0.08)') : 'transparent',
+    borderWidth: 2, pointRadius: 3, pointHoverRadius: 6,
+    pointBackgroundColor: color, tension: 0.4, fill
+  };
+}
+
+function mkChart(id, type, labels, datasets, opts = {}) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, { type, data: { labels, datasets }, options: { ...CD, ...opts } });
+}
+
+function buildKPIs(s) {
+  const vis = ROLES[currentRole].visible;
+  const kpis = [
+    { id:'steps',   label:'Steps',         value:s.steps.toLocaleString(), unit:'',     sub:'Goal: 10,000',         trend:'+12%', up:true,  color:'#00d4ff', key:'steps' },
+    { id:'cal',     label:'Calories',       value:s.calories.toLocaleString(), unit:'kcal', sub:'Burned today',     trend:'+5%',  up:true,  color:'#ffd60a', key:'calories' },
+    { id:'active',  label:'Active Min',     value:s.active_min, unit:'min', sub:'Target: 60 min',                  trend:'-3%',  up:false, color:'#00ff9d', key:'active' },
+    { id:'hr',      label:'Heart Rate',     value:s.hr, unit:'bpm', sub:`Resting: ${s.resting_hr}`,                trend:'stable',up:true, color:'#ff4d6d', key:'hr' },
+    { id:'spo2',    label:'SpO2',           value:s.spo2, unit:'%', sub:'Optimal ≥ 95%',                           trend:'+0.2', up:true,  color:'#00d4ff', key:'spo2' },
+    { id:'stress',  label:'Stress',         value:s.stress, unit:'', sub:'Moderate level',                         trend:'-8%',  up:false, color:'#bf5af2', key:'stress' },
+    { id:'bp',      label:'Blood Pressure', value:`${s.sbp}/${s.dbp}`, unit:'mmHg', sub:'Normal range',            trend:'stable',up:true, color:'#ff4d6d', key:'bp' },
+    { id:'energy',  label:'Energy Score',   value:s.energy, unit:'', sub:'/ 100',                                  trend:'+6',   up:true,  color:'#ffd60a', key:'energy' },
+  ];
+  const row = document.getElementById('kpi-row');
+  row.innerHTML = '';
+  kpis.filter(k => vis.includes(k.key)).forEach(k => {
+    const tr = k.trend === 'stable'
+      ? `<span style="color:var(--text-dim)">${k.trend}</span>`
+      : k.up ? `<span class="trend-up">▲ ${k.trend}</span>` : `<span class="trend-dn">▼ ${k.trend}</span>`;
+    row.innerHTML += `
+      <div class="kpi" style="--kpi-color:${k.color}">
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}<span class="kpi-unit">${k.unit}</span></div>
+        <div class="kpi-sub">${k.sub}</div>
+        <div class="kpi-trend">${tr}</div>
+      </div>`;
+  });
+}
+
+const CARD_ROLE_MAP = {
+  'card-ecg':           ['athlete','doctor'],
+  'card-antioxidant':   ['athlete','doctor'],
+  'card-menstrual':     ['athlete','doctor'],
+  'card-body':          ['athlete','doctor','trainer'],
+  'card-apnea':         ['athlete','doctor','trainer'],
+  'card-bp':            ['athlete','doctor','trainer'],
+  'card-hrv':           ['athlete','doctor','trainer'],
+  'card-spo2':          ['athlete','doctor','trainer'],
+  'card-stress':        ['athlete','doctor','trainer'],
+  'card-energy':        ['athlete','doctor','trainer','coach'],
+  'card-sleep':         ['athlete','doctor','trainer'],
+  'card-recovery-score':['athlete','doctor','trainer','coach'],
+};
+
+function applyRestrictions() {
+  Object.entries(CARD_ROLE_MAP).forEach(([id, roles]) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('restricted', !roles.includes(currentRole));
+  });
+}
+
+function renderCharts() {
+  const T = DATA.timeline, S = DATA.summary, L = T.labels;
+
+  // --- OVERVIEW ---
+  document.getElementById('hr-badge').textContent    = `${S.hr} bpm`;
+  document.getElementById('steps-badge').textContent = `${S.steps.toLocaleString()} steps`;
+  document.getElementById('cal-badge').textContent   = `${S.calories.toLocaleString()} kcal`;
+
+  const eEl = document.getElementById('energy-big');
+  eEl.textContent = S.energy;
+  eEl.className   = 'readiness-score ' + (S.energy >= 80 ? 'high' : S.energy >= 60 ? 'medium' : 'low');
+  document.getElementById('energy-label').textContent =
+    S.energy >= 80 ? 'Excellent — Ready to train hard' :
+    S.energy >= 60 ? 'Good — Normal training OK' : 'Low — Rest recommended';
+
+  mkChart('chart-hr',       'line', L, [lineds('HR',      T.hrData,      'rgb(255,77,109)')]);
+  mkChart('chart-energy',   'line', L, [lineds('Energy',  T.energyData,  'rgb(255,214,10)')],
+    { scales:{ x:{display:false}, y:{display:false} } });
+  mkChart('chart-steps',    'bar',  L, [{ label:'Steps',   data:T.stepsData,  backgroundColor:'rgba(0,212,255,0.6)', borderColor:'#00d4ff', borderWidth:1, borderRadius:3 }]);
+  mkChart('chart-calories', 'bar',  L, [{ label:'Calories',data:T.calData,    backgroundColor:'rgba(255,214,10,0.5)',borderColor:'#ffd60a', borderWidth:1, borderRadius:3 }]);
+  mkChart('chart-spo2',     'line', L, [lineds('SpO2',    T.spo2Data,    'rgb(0,212,255)')],
+    { scales:{ y:{ min:93, max:101, grid:{color:'rgba(30,48,72,0.5)'}, ticks:{color:'#4a6a8a'} }, x: CD.scales.x } });
+  mkChart('chart-stress',   'line', L, [lineds('Stress',  T.stressData,  'rgb(191,90,242)')]);
+  mkChart('chart-active',   'bar',  L, [{ label:'Active',  data:T.activeData, backgroundColor:'rgba(0,255,157,0.5)', borderColor:'#00ff9d', borderWidth:1, borderRadius:3 }]);
+
+  // --- VITALS ---
+  const ecg = DATA.ecg;
+  mkChart('chart-ecg', 'line', ecg.map((_,i)=>i), [{
+    data: ecg, borderColor:'#00ff9d', backgroundColor:'rgba(0,255,157,0.04)',
+    borderWidth:1.5, pointRadius:0, tension:0.1, fill:true
+  }], { scales:{ x:{display:false}, y:{ grid:{color:'rgba(30,48,72,0.3)'}, ticks:{color:'#4a6a8a',font:{size:9}} } }, animation:{duration:300} });
+
+  document.getElementById('bp-badge').textContent = `${S.sbp}/${S.dbp} mmHg`;
+  mkChart('chart-bp', 'line', L, [
+    lineds('Systolic', T.sbpData, 'rgb(255,77,109)', false),
+    lineds('Diastolic',T.dbpData, 'rgb(0,212,255)',  false)
+  ], { plugins:{...CD.plugins, legend:{display:true, labels:{color:'#c8d8f0', font:{family:"'Rajdhani',sans-serif"}}}} });
+
+  mkChart('chart-hrzone', 'doughnut',
+    ['Zone 1 (Rest)','Zone 2 (Fat Burn)','Zone 3 (Cardio)','Zone 4 (Threshold)','Zone 5 (Max)'],
+    [{ data:[rnd(15,25),rnd(25,35),rnd(20,30),rnd(10,18),rnd(3,8)],
+       backgroundColor:['rgba(0,212,255,0.7)','rgba(0,255,157,0.7)','rgba(255,214,10,0.7)','rgba(255,165,0,0.7)','rgba(255,77,109,0.7)'],
+       borderColor:'rgba(0,0,0,0.5)', borderWidth:2 }],
+    { cutout:'65%', scales:{ x:{display:false}, y:{display:false} },
+      plugins:{...CD.plugins, legend:{display:true, position:'right', labels:{color:'#c8d8f0', font:{family:"'Rajdhani',sans-serif",size:11}}}} }
+  );
+
+  const h24L = Array.from({length:24}, (_,i) => `${i}:00`);
+  mkChart('chart-hr24', 'line', h24L, [lineds('HR',
+    h24L.map((_,h) => Math.round(((h>=22||h<6)?58:75) + Math.sin(h/24*Math.PI*2)*10 + rnd(-5,5))),
+    'rgb(255,77,109)')]);
+
+  document.getElementById('anti-num').textContent   = S.antioxidant;
+  document.getElementById('anti-badge').textContent = S.antioxidant >= 55 ? 'Optimal' : 'Low';
+  document.getElementById('anti-bar').style.width   = S.antioxidant + '%';
+  mkChart('chart-antioxidant', 'line', L, [lineds('Carotenoids', T.antiData, 'rgb(255,214,10)')],
+    { scales:{ x:{display:false}, y:{display:false} } });
+
+  // --- RECOVERY ---
+  const total = +(S.sleep_deep + S.sleep_light + S.sleep_rem).toFixed(1);
+  document.getElementById('sleep-total-badge').textContent = `${total} hrs`;
+
+  mkChart('chart-sleep', 'bar', ['Deep','Light','REM'],
+    [{ data:[S.sleep_deep, S.sleep_light, S.sleep_rem],
+       backgroundColor:['rgba(191,90,242,0.7)','rgba(0,212,255,0.5)','rgba(0,255,157,0.6)'],
+       borderColor:['#bf5af2','#00d4ff','#00ff9d'], borderWidth:1, borderRadius:4 }],
+    { indexAxis:'y' });
+
+  document.getElementById('sleep-bars').innerHTML = `
+    <div class="sleep-stage-row">
+      <span class="sleep-stage-label">DEEP</span>
+      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_deep/8*100}%;background:#bf5af2"></div></div>
+      <span class="sleep-stage-val">${S.sleep_deep}h</span>
+    </div>
+    <div class="sleep-stage-row">
+      <span class="sleep-stage-label">LIGHT</span>
+      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_light/8*100}%;background:#00d4ff"></div></div>
+      <span class="sleep-stage-val">${S.sleep_light}h</span>
+    </div>
+    <div class="sleep-stage-row">
+      <span class="sleep-stage-label">REM</span>
+      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_rem/8*100}%;background:#00ff9d"></div></div>
+      <span class="sleep-stage-val">${S.sleep_rem}h</span>
+    </div>`;
+
+  document.getElementById('apnea-badge').textContent = `${S.apnea} events`;
+  mkChart('chart-apnea', 'bar', L,
+    [{ data:T.apneaData,
+       backgroundColor:T.apneaData.map(v => v>5?'rgba(255,77,109,0.6)':v>2?'rgba(255,214,10,0.6)':'rgba(0,255,157,0.6)'),
+       borderRadius:3 }]);
+
+  const phaseClasses = ['','phase-1','phase-2','phase-3','phase-4'];
+  const phaseIdx = ['','Menstrual','Follicular','Ovulation','Luteal'].indexOf(S.menstrual_phase);
+  const pill = document.getElementById('cycle-phase-pill');
+  pill.textContent = S.menstrual_phase;
+  pill.className = 'phase-pill ' + (phaseClasses[phaseIdx] || 'phase-2');
+  document.getElementById('cycle-days-info').textContent =
+    `Day ${S.cycle_day} of cycle · ${28 - S.cycle_day} days to next period`;
+  mkChart('chart-cycle', 'doughnut',
+    ['Menstrual','Follicular','Ovulation','Luteal'],
+    [{ data:[5,8,3,12],
+       backgroundColor:['rgba(255,77,109,0.7)','rgba(0,212,255,0.5)','rgba(0,255,157,0.7)','rgba(191,90,242,0.5)'],
+       borderWidth:2, borderColor:'rgba(0,0,0,0.5)' }],
+    { cutout:'70%', scales:{x:{display:false},y:{display:false}},
+      plugins:{...CD.plugins, legend:{display:true, position:'right', labels:{color:'#c8d8f0',font:{size:10}}}} });
+
+  document.getElementById('bc-fat').textContent    = S.body_fat + '%';
+  document.getElementById('bc-muscle').textContent = S.muscle_kg + 'kg';
+  document.getElementById('bc-bmi').textContent    = S.bmi;
+
+  const rEl = document.getElementById('readiness-big');
+  rEl.textContent = S.readiness;
+  rEl.className   = 'readiness-score ' + (S.readiness >= 80 ? 'high' : S.readiness >= 60 ? 'medium' : 'low');
+  mkChart('chart-readiness', 'line', L, [lineds('Readiness', T.readinessData, 'rgb(0,255,157)')],
+    { scales:{ x:{display:false}, y:{min:0,max:100,grid:{color:'rgba(30,48,72,0.5)'},ticks:{color:'#4a6a8a'}} } });
+
+  // --- PERFORMANCE ---
+  mkChart('chart-radar', 'radar',
+    ['Steps','Cardio','Sleep','Recovery','Stress Ctrl','Energy','SpO2'],
+    [{ data:[S.steps/130, rnd(60,90), total/8*100, S.readiness, 100-S.stress, S.energy, (S.spo2-90)*10],
+       borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.1)',
+       borderWidth:2, pointBackgroundColor:'#00d4ff', pointRadius:4 }],
+    { scales:{ r:{ grid:{color:'rgba(30,48,72,0.6)'},
+        pointLabels:{color:'#c8d8f0', font:{family:"'Rajdhani',sans-serif",size:11}},
+        angleLines:{color:'rgba(30,48,72,0.6)'}, ticks:{display:false}, min:0, max:100 } },
+      plugins:{legend:{display:false}} });
+
+  mkChart('chart-weekly', 'bar', L, [
+    { label:'Steps (÷100)', data:T.stepsData.map(v=>Math.round(v/100)), backgroundColor:'rgba(0,212,255,0.6)', borderRadius:3 },
+    { label:'Calories',     data:T.calData,                              backgroundColor:'rgba(255,214,10,0.5)', borderRadius:3 }
+  ], { plugins:{...CD.plugins, legend:{display:true, labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}} });
+
+  mkChart('chart-active-trend', 'line', L, [
+    lineds('Active Minutes', T.activeData, 'rgb(0,255,157)'),
+    { label:'Goal (60 min)', data:L.map(()=>60),
+      borderColor:'rgba(255,255,255,0.2)', borderDash:[6,3], borderWidth:1, pointRadius:0, fill:false }
+  ], { plugins:{...CD.plugins, legend:{display:true, labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}} });
+
+  // Fall alert
+  if (S.fall) {
+    document.getElementById('fall-alert').classList.remove('hidden');
+    document.getElementById('fall-time').textContent =
+      'Today at ' + new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  applyRestrictions();
+}
+
+function setRole(role) {
+  currentRole = role;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === role));
+  document.getElementById('role-desc').textContent = ROLES[role].label;
+  buildKPIs(DATA.summary);
+  applyRestrictions();
+}
+
+function setView(view) {
+  const views = ['overview','vitals','recovery','performance'];
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.view-tab').forEach((t, i) => t.classList.toggle('active', views[i] === view));
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en',{hour12:false});
+}
+
+function init() {
+  DATA.summary  = genSummary();
+  DATA.timeline = genTimeline(7);
+  DATA.ecg      = genECG(8);
+  buildKPIs(DATA.summary);
+  renderCharts();
+  setInterval(updateClock, 1000);
+  updateClock();
+  // Live KPI refresh every 30s
+  setInterval(() => { DATA.summary = genSummary(); buildKPIs(DATA.summary); }, 30000);
+  // ECG refresh every 3s
+  setInterval(() => {
+    DATA.ecg = genECG(8);
+    if (charts['chart-ecg']) {
+      charts['chart-ecg'].data.datasets[0].data = DATA.ecg;
+      charts['chart-ecg'].data.labels = DATA.ecg.map((_,i)=>i);
+      charts['chart-ecg'].update('none');
+    }
+  }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
