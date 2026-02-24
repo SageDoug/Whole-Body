@@ -57,3 +57,5 @@ All fake data is isolated in clearly marked functions:
 - **JS**: `genSummary()`, `genTimeline()`, `genECG()` in `index.html`
 - **Python**: `generate_summary()`, `generate_hourly_timeline()`, `generate_ecg_waveform()` in `server.py`
 - **C++**: `generate_day_data()` in `data_generator.cpp`
+
+## To run put (python -m http.server 8000) in Terminal
