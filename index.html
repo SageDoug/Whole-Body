@@ -1,1524 +1,1923 @@
+<!--
+BioMon — Biometric Monitoring Dashboard
+Single-file, self-contained HTML. Copy to your GitHub repo as index.html.
+No server or build step required — just open in a browser.
+
+CSV Import: Click "Import CSV" in the header to load your own athlete data.
+The built-in sample data (3 athletes, 7 days) is always restored on page reload.
+-->
+
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>BioMon — Whole Body Monitoring</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="data.js"></script>
+<script>
+// =====================================================================
+// BIOMON — BUILT-IN SAMPLE DATA (embedded inline, no server required)
+// CSV import will override this for the session; reload restores it.
+// =====================================================================
+(function() {
+function ecg() {
+var d = [];
+for (var i = 0; i < 200; i++) {
+var p = (i % 50) / 50;
+if (p < 0.08) d.push(Math.sin(p * Math.PI / 0.08) * 0.18);
+else if (p < 0.18) d.push(0);
+else if (p < 0.26) d.push(Math.sin((p - 0.18) * Math.PI / 0.08) * 0.25);
+else if (p < 0.30) d.push(0);
+else if (p < 0.37) d.push(Math.sin((p - 0.30) * Math.PI / 0.07) * 1.0);
+else if (p < 0.41) d.push(-Math.sin((p - 0.37) * Math.PI / 0.04) * 0.3);
+else if (p < 0.55) d.push(Math.sin((p - 0.41) * Math.PI / 0.14) * 0.22);
+else d.push(0);
+}
+return d;
+}
+
+function tl(s) {
+var L = [], HR = [], SPO = [], ST = [], EN = [], SBP = [], DBP = [], ANT = [], STP = [], CAL = [], ACT = [], APN = [], RDY = [];
+for (var i = 0; i < 15; i++) {
+var t = (i + 6);
+L.push((t < 10 ? ‘0’ : ‘’) + t + ‘:00’);
+var f = i / 14;
+HR.push(Math.round(s.resting_hr + (s.heart_rate - s.resting_hr) * Math.sin(f * Math.PI)));
+SPO.push(+(s.spo2 + Math.sin(f * Math.PI * 2) * 0.8).toFixed(1));
+ST.push(Math.round(s.stress * (0.7 + 0.4 * Math.sin(f * Math.PI + 1))));
+EN.push(Math.round(s.energy * (0.8 + 0.3 * Math.sin(f * Math.PI + 2))));
+SBP.push(Math.round(s.sbp + Math.sin(f * Math.PI * 2) * 5));
+DBP.push(Math.round(s.dbp + Math.sin(f * Math.PI * 2) * 3));
+ANT.push(+(s.antioxidant + Math.sin(f * Math.PI) * 4).toFixed(1));
+STP.push(Math.round(s.steps * f));
+CAL.push(Math.round(s.calories * f));
+ACT.push(Math.round(s.active_minutes * f));
+APN.push(i > 0 && i < 8 && s.apnea_events > 0 ? (Math.random() < s.apnea_events / 15 ? 1 : 0) : 0);
+RDY.push(+(s.readiness * (0.85 + 0.2 * Math.sin(f * Math.PI))).toFixed(1));
+}
+return { labels: L, hrData: HR, spo2Data: SPO, stressData: ST, energyData: EN,
+sbpData: SBP, dbpData: DBP, antiData: ANT, stepsData: STP, calData: CAL,
+activeData: ACT, apneaData: APN, readinessData: RDY };
+}
+
+function day(s) { return { summary: s, timeline: tl(s) }; }
+
+window.BIOMON_DATA = {
+thresholds: {
+hr_high: 180, hr_low: 40, spo2_low: 93, sbp_high: 145, dbp_high: 95,
+apnea_high: 10, stress_high: 75, energy_low: 30, readiness_low: 35, body_fat_high: 28
+},
+athletes: [
+{
+id: 1, name: ‘S. Martinez’, number: 7,
+team: ‘Westlake FC’, position: ‘Midfielder’,
+age: 26, height_cm: 178, weight_kg: 74,
+ecg: ecg(),
+hr_zones: { labels: [‘Zone 1 (Rest)’, ‘Zone 2 (Fat Burn)’, ‘Zone 3 (Aerobic)’, ‘Zone 4 (Threshold)’, ‘Zone 5 (Max)’], minutes: [28, 52, 38, 22, 8] },
+days: {
+‘2025-07-14’: day({ steps:9200, calories:2480, active_minutes:62, heart_rate:74, resting_hr:52, spo2:98, stress:38, sbp:118, dbp:76, energy:82, antioxidant:58, body_fat:14.2, muscle_kg:61.8, bmi:23.3, sleep_deep:1.8, sleep_light:3.2, sleep_rem:1.9, apnea_events:1, menstrual_phase:‘N/A’, cycle_day:0, readiness:84, fall:false }),
+‘2025-07-15’: day({ steps:11400, calories:2810, active_minutes:78, heart_rate:82, resting_hr:53, spo2:97, stress:44, sbp:122, dbp:78, energy:76, antioxidant:55, body_fat:14.1, muscle_kg:62.0, bmi:23.3, sleep_deep:1.6, sleep_light:3.0, sleep_rem:1.7, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:78, fall:false }),
+‘2025-07-16’: day({ steps:7600, calories:2200, active_minutes:44, heart_rate:68, resting_hr:51, spo2:98, stress:28, sbp:116, dbp:74, energy:88, antioxidant:62, body_fat:14.0, muscle_kg:62.2, bmi:23.3, sleep_deep:2.1, sleep_light:3.4, sleep_rem:2.2, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:91, fall:false }),
+‘2025-07-17’: day({ steps:13200, calories:3100, active_minutes:92, heart_rate:88, resting_hr:54, spo2:97, stress:55, sbp:126, dbp:80, energy:71, antioxidant:52, body_fat:14.2, muscle_kg:62.0, bmi:23.3, sleep_deep:1.5, sleep_light:2.8, sleep_rem:1.5, apnea_events:2, menstrual_phase:‘N/A’, cycle_day:0, readiness:70, fall:false }),
+‘2025-07-18’: day({ steps:10800, calories:2750, active_minutes:68, heart_rate:79, resting_hr:52, spo2:98, stress:41, sbp:120, dbp:77, energy:80, antioxidant:57, body_fat:14.1, muscle_kg:62.1, bmi:23.3, sleep_deep:1.9, sleep_light:3.1, sleep_rem:1.8, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:82, fall:false }),
+‘2025-07-19’: day({ steps:6400, calories:2050, active_minutes:35, heart_rate:65, resting_hr:50, spo2:99, stress:22, sbp:114, dbp:73, energy:92, antioxidant:65, body_fat:13.9, muscle_kg:62.3, bmi:23.2, sleep_deep:2.3, sleep_light:3.6, sleep_rem:2.4, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:95, fall:false }),
+‘2025-07-20’: day({ steps:12600, calories:2940, active_minutes:84, heart_rate:85, resting_hr:53, spo2:97, stress:48, sbp:124, dbp:79, energy:74, antioxidant:54, body_fat:14.0, muscle_kg:62.1, bmi:23.2, sleep_deep:1.7, sleep_light:2.9, sleep_rem:1.6, apnea_events:1, menstrual_phase:‘N/A’, cycle_day:0, readiness:75, fall:false }),
+}
+},
+{
+id: 2, name: ‘A. Chen’, number: 14,
+team: ‘Westlake FC’, position: ‘Goalkeeper’,
+age: 24, height_cm: 185, weight_kg: 82,
+ecg: ecg(),
+hr_zones: { labels: [‘Zone 1 (Rest)’, ‘Zone 2 (Fat Burn)’, ‘Zone 3 (Aerobic)’, ‘Zone 4 (Threshold)’, ‘Zone 5 (Max)’], minutes: [42, 38, 28, 14, 4] },
+days: {
+‘2025-07-14’: day({ steps:7800, calories:2620, active_minutes:48, heart_rate:62, resting_hr:48, spo2:98, stress:32, sbp:115, dbp:72, energy:86, antioxidant:60, body_fat:16.8, muscle_kg:68.2, bmi:23.9, sleep_deep:2.0, sleep_light:3.3, sleep_rem:2.0, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:88, fall:false }),
+‘2025-07-15’: day({ steps:9200, calories:2780, active_minutes:58, heart_rate:71, resting_hr:49, spo2:98, stress:40, sbp:118, dbp:75, energy:80, antioxidant:57, body_fat:16.7, muscle_kg:68.3, bmi:23.9, sleep_deep:1.8, sleep_light:3.1, sleep_rem:1.8, apnea_events:1, menstrual_phase:‘N/A’, cycle_day:0, readiness:82, fall:false }),
+‘2025-07-16’: day({ steps:6200, calories:2200, active_minutes:38, heart_rate:58, resting_hr:47, spo2:99, stress:24, sbp:112, dbp:70, energy:91, antioxidant:64, body_fat:16.6, muscle_kg:68.4, bmi:23.9, sleep_deep:2.2, sleep_light:3.5, sleep_rem:2.2, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:93, fall:false }),
+‘2025-07-17’: day({ steps:11400, calories:2980, active_minutes:74, heart_rate:78, resting_hr:50, spo2:97, stress:52, sbp:122, dbp:78, energy:74, antioxidant:53, body_fat:16.8, muscle_kg:68.2, bmi:23.9, sleep_deep:1.6, sleep_light:2.9, sleep_rem:1.6, apnea_events:3, menstrual_phase:‘N/A’, cycle_day:0, readiness:72, fall:false }),
+‘2025-07-18’: day({ steps:8900, calories:2680, active_minutes:54, heart_rate:68, resting_hr:48, spo2:98, stress:36, sbp:116, dbp:73, energy:83, antioxidant:59, body_fat:16.7, muscle_kg:68.3, bmi:23.9, sleep_deep:1.9, sleep_light:3.2, sleep_rem:1.9, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:85, fall:false }),
+‘2025-07-19’: day({ steps:5400, calories:2050, active_minutes:28, heart_rate:55, resting_hr:46, spo2:99, stress:18, sbp:110, dbp:68, energy:95, antioxidant:68, body_fat:16.5, muscle_kg:68.5, bmi:23.9, sleep_deep:2.4, sleep_light:3.7, sleep_rem:2.4, apnea_events:0, menstrual_phase:‘N/A’, cycle_day:0, readiness:96, fall:false }),
+‘2025-07-20’: day({ steps:10600, calories:2880, active_minutes:66, heart_rate:74, resting_hr:49, spo2:98, stress:44, sbp:120, dbp:76, energy:77, antioxidant:55, body_fat:16.7, muscle_kg:68.3, bmi:23.9, sleep_deep:1.7, sleep_light:3.0, sleep_rem:1.7, apnea_events:1, menstrual_phase:‘N/A’, cycle_day:0, readiness:79, fall:false }),
+}
+},
+{
+id: 3, name: ‘L. Thompson’, number: 22,
+team: ‘Westlake FC’, position: ‘Defender’,
+age: 28, height_cm: 172, weight_kg: 67,
+ecg: ecg(),
+hr_zones: { labels: [‘Zone 1 (Rest)’, ‘Zone 2 (Fat Burn)’, ‘Zone 3 (Aerobic)’, ‘Zone 4 (Threshold)’, ‘Zone 5 (Max)’], minutes: [22, 48, 42, 28, 12] },
+days: {
+‘2025-07-14’: day({ steps:10400, calories:2380, active_minutes:70, heart_rate:76, resting_hr:54, spo2:97, stress:42, sbp:119, dbp:76, energy:80, antioxidant:55, body_fat:19.2, muscle_kg:54.2, bmi:22.6, sleep_deep:1.7, sleep_light:3.1, sleep_rem:1.8, apnea_events:2, menstrual_phase:‘Follicular’, cycle_day:8, readiness:80, fall:false }),
+‘2025-07-15’: day({ steps:12800, calories:2780, active_minutes:86, heart_rate:84, resting_hr:55, spo2:97, stress:50, sbp:124, dbp:79, energy:74, antioxidant:51, body_fat:19.1, muscle_kg:54.3, bmi:22.6, sleep_deep:1.5, sleep_light:2.8, sleep_rem:1.5, apnea_events:4, menstrual_phase:‘Follicular’, cycle_day:9, readiness:73, fall:false }),
+‘2025-07-16’: day({ steps:8200, calories:2100, active_minutes:50, heart_rate:70, resting_hr:52, spo2:98, stress:30, sbp:116, dbp:74, energy:86, antioxidant:59, body_fat:19.0, muscle_kg:54.4, bmi:22.6, sleep_deep:1.9, sleep_light:3.3, sleep_rem:2.0, apnea_events:1, menstrual_phase:‘Follicular’, cycle_day:10, readiness:87, fall:false }),
+‘2025-07-17’: day({ steps:14200, calories:3050, active_minutes:96, heart_rate:91, resting_hr:56, spo2:96, stress:62, sbp:130, dbp:84, energy:66, antioxidant:47, body_fat:19.2, muscle_kg:54.2, bmi:22.6, sleep_deep:1.3, sleep_light:2.6, sleep_rem:1.4, apnea_events:8, menstrual_phase:‘Ovulation’, cycle_day:14, readiness:62, fall:true }),
+‘2025-07-18’: day({ steps:7200, calories:2150, active_minutes:44, heart_rate:72, resting_hr:54, spo2:97, stress:46, sbp:121, dbp:77, energy:72, antioxidant:52, body_fat:19.1, muscle_kg:54.3, bmi:22.6, sleep_deep:1.6, sleep_light:3.0, sleep_rem:1.7, apnea_events:2, menstrual_phase:‘Ovulation’, cycle_day:15, readiness:74, fall:false }),
+‘2025-07-19’: day({ steps:9600, calories:2280, active_minutes:60, heart_rate:69, resting_hr:53, spo2:98, stress:34, sbp:117, dbp:74, energy:82, antioxidant:57, body_fat:19.0, muscle_kg:54.4, bmi:22.6, sleep_deep:1.8, sleep_light:3.2, sleep_rem:1.9, apnea_events:0, menstrual_phase:‘Ovulation’, cycle_day:16, readiness:83, fall:false }),
+‘2025-07-20’: day({ steps:11200, calories:2600, active_minutes:72, heart_rate:80, resting_hr:54, spo2:97, stress:44, sbp:122, dbp:78, energy:77, antioxidant:53, body_fat:19.1, muscle_kg:54.3, bmi:22.6, sleep_deep:1.6, sleep_light:2.9, sleep_rem:1.7, apnea_events:3, menstrual_phase:‘Luteal’, cycle_day:17, readiness:76, fall:false }),
+}
+}
+]
+};
+})();
+</script>
+
 <style>
+/* ═══════════════════════════════════════════════
+BIOMON — FOREST / NATURE THEME
+Deep woodland greens, moss, stone, bark, lichen
+Warm amber used only for alerts & accents
+═══════════════════════════════════════════════ */
 :root {
-  --bg:       #080c14;
-  --bg2:      #0d1321;
-  --bg3:      #111827;
-  --panel:    #131d2e;
-  --border:   #1e3048;
-  --accent:   #00d4ff;
-  --accent2:  #00ff9d;
-  --accent3:  #ff4d6d;
-  --accent4:  #ffd60a;
-  --accent5:  #bf5af2;
-  --text:     #c8d8f0;
-  --text-dim: #4a6a8a;
-  --text-hi:  #e8f4ff;
-  --glow:     0 0 20px rgba(0,212,255,0.3);
-  --glow2:    0 0 20px rgba(0,255,157,0.3);
+/* Backgrounds — deep forest floor */
+--bg: #060d09;
+--bg2: #0a1510;
+--bg3: #0e1c14;
+--panel: #0c1911;
+--panel2: #101f14;
+--border: #1c3324;
+--border2: #274a34;
+
+/* Primary — forest canopy greens */
+--green: #3d8c58;
+--green2: #5aaa72;
+--green3: #84c898;
+--moss: #2e6640;
+--lichen: #a8c8a0;
+
+/* Accents — stone, bark, water */
+--stone: #7a9880;
+--bark: #5c7850;
+--water: #4a8878;
+--water2: #6aaа90;
+
+/* Warm sparingly — amber for warnings only */
+--amber: #b88c30;
+--amber2: #d4aa50;
+
+/* Alerts */
+--alert: #b03028;
+--warn: #b88c30;
+
+/* Text */
+--text: #94b898;
+--text-dim: #3e6048;
+--text-hi: #c8dcc0;
+--cream: #c8dcc0;
+
+/* Glows */
+--glow-g: 0 0 24px rgba(61,140,88,0.35);
+--glow-w: 0 0 20px rgba(74,136,120,0.3);
+--glow-a: 0 0 20px rgba(184,140,48,0.3);
+--glow-m: 0 0 22px rgba(46,102,64,0.4);
 }
+
 * { margin:0; padding:0; box-sizing:border-box; }
+
 body {
-  font-family: 'Exo 2', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
+font-family: 'Crimson Pro', Georgia, serif;
+background: var(--bg);
+color: var(--text);
+min-height: 100vh;
+overflow-x: hidden;
 }
+
+/* Atmospheric forest depth */
 body::before {
-  content:'';
-  position:fixed; inset:0;
-  background-image:
-    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events:none;
-  z-index:0;
+content:'';
+position:fixed; inset:0;
+background:
+radial-gradient(ellipse 1000px 600px at 0% 0%, rgba(46,102,64,0.07) 0%, transparent 65%),
+radial-gradient(ellipse 700px 900px at 100% 80%, rgba(61,140,88,0.05) 0%, transparent 65%),
+radial-gradient(ellipse 500px 500px at 50% 45%, rgba(74,136,120,0.03) 0%, transparent 100%);
+pointer-events:none; z-index:0;
+}
+
+/* Subtle organic grain */
+body::after {
+content:'';
+position:fixed; inset:0;
+opacity:0.35;
+background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+pointer-events:none; z-index:0;
 }
 
 /* ── HEADER ── */
 header {
-  position:sticky; top:0; z-index:100;
-  background: rgba(8,12,20,0.95);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  display:flex; align-items:center; justify-content:space-between;
-  height:60px;
+position:sticky; top:0; z-index:100;
+background: rgba(6,13,9,0.96);
+backdrop-filter: blur(20px);
+border-bottom: 1px solid var(--border2);
+padding: 0 28px;
+display:flex; align-items:center; justify-content:space-between;
+height:64px;
 }
+header::after {
+content:'';
+position:absolute; bottom:-1px; left:0; right:0; height:1px;
+background: linear-gradient(90deg, transparent, var(--moss), var(--green), var(--green2), var(--water), transparent);
+opacity:0.6;
+}
+
 .logo {
-  font-family:'Rajdhani',sans-serif;
-  font-size:1.6rem; font-weight:700;
-  letter-spacing:0.2em; color:var(--accent);
-  text-shadow: var(--glow);
+font-family:'Cinzel',serif;
+font-size:1.5rem; font-weight:900;
+letter-spacing:0.28em;
+color: var(--green2);
+text-shadow: var(--glow-g);
 }
-.logo span { color:var(--accent2); }
+.logo span { color: var(--green3); }
+
 .live-dot {
-  display:inline-block; width:8px; height:8px;
-  background:var(--accent2); border-radius:50%;
-  animation: pulse-dot 1.5s ease-in-out infinite;
-  margin-right:6px; box-shadow: 0 0 8px var(--accent2);
+display:inline-block; width:7px; height:7px;
+background:var(--green2); border-radius:50%;
+animation: pulse-dot 2s ease-in-out infinite;
+margin-right:7px; box-shadow: 0 0 9px var(--green2);
 }
 @keyframes pulse-dot {
-  0%,100%{opacity:1;transform:scale(1);}
-  50%{opacity:0.5;transform:scale(0.8);}
+0%,100%{opacity:1;transform:scale(1);}
+50%{opacity:0.3;transform:scale(0.6);}
 }
-.live-label { font-size:0.75rem; letter-spacing:0.1em; color:var(--accent2); font-family:'JetBrains Mono',monospace; }
+.live-label {
+font-size:0.66rem; letter-spacing:0.18em;
+color:var(--green2); font-family:'JetBrains Mono',monospace;
+text-transform:uppercase;
+}
 .header-right { display:flex; align-items:center; gap:16px; }
-.clock { font-family:'JetBrains Mono',monospace; font-size:0.85rem; color:var(--text-dim); letter-spacing:0.05em; }
+.clock {
+font-family:'JetBrains Mono',monospace; font-size:0.8rem;
+color:var(--text-dim); letter-spacing:0.08em;
+border:1px solid var(--border2); padding:3px 11px; border-radius:2px;
+background:rgba(28,51,36,0.3);
+}
+#athlete-label {
+font-family:'Cinzel',serif; font-size:0.63rem;
+letter-spacing:0.14em; color:var(--text-dim); text-transform:uppercase;
+}
+#athlete-label span { color:var(--green2); }
+
+/* ── CSV IMPORT BUTTON (in header) ── */
+.csv-btn {
+padding:5px 14px; border:1px solid var(--border2);
+background:transparent; color:var(--stone);
+font-family:'Cinzel',serif; font-size:0.6rem; font-weight:600;
+letter-spacing:0.12em; text-transform:uppercase;
+cursor:pointer; border-radius:2px; transition:all 0.25s;
+display:flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.csv-btn:hover { border-color:var(--green2); color:var(--green2); background:rgba(90,170,114,0.08); }
+.csv-btn.loaded { border-color:var(--green); color:var(--green3); background:rgba(61,140,88,0.1); }
+.csv-btn svg { width:13px; height:13px; flex-shrink:0; }
+#csv-file-input { display:none; }
+
+.csv-badge {
+display:none; align-items:center; gap:6px;
+font-family:'JetBrains Mono',monospace; font-size:0.63rem;
+color:var(--green3); padding:3px 10px;
+background:rgba(61,140,88,0.1); border:1px solid rgba(61,140,88,0.25);
+border-radius:2px;
+}
+.csv-badge.visible { display:flex; }
+.csv-badge button {
+background:none; border:none; color:var(--text-dim); cursor:pointer;
+font-size:0.75rem; padding:0 2px; line-height:1; transition:color 0.2s;
+}
+.csv-badge button:hover { color:var(--alert); }
 
 /* ── ALERT BANNER ── */
 .alert-banner {
-  background: rgba(255,77,109,0.12);
-  border-bottom: 2px solid var(--accent3);
-  padding: 0 24px;
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.4s ease, padding 0.3s ease;
+background: linear-gradient(135deg, rgba(176,48,40,0.13), rgba(176,48,40,0.07));
+border-bottom: 2px solid rgba(176,48,40,0.4);
+padding:0 28px;
+display:none; flex-direction:column; gap:5px;
+max-height:0; overflow:hidden;
+transition: max-height 0.4s ease, padding 0.3s ease;
 }
-.alert-banner.has-alerts { display:flex; max-height:300px; padding:10px 24px; }
+.alert-banner.has-alerts { display:flex; max-height:300px; padding:10px 28px; }
 .alert-banner-title {
-  font-family:'Rajdhani',sans-serif; font-size:0.75rem; font-weight:700;
-  letter-spacing:0.2em; text-transform:uppercase; color:var(--accent3);
-  display:flex; align-items:center; gap:8px; margin-bottom:4px;
+font-family:'Cinzel',serif; font-size:0.66rem; font-weight:700;
+letter-spacing:0.22em; text-transform:uppercase; color:var(--alert);
+display:flex; align-items:center; gap:8px; margin-bottom:4px;
 }
 .alert-item {
-  display:flex; align-items:center; gap:10px;
-  padding:5px 12px;
-  background:rgba(255,77,109,0.08);
-  border:1px solid rgba(255,77,109,0.25);
-  border-radius:3px;
-  font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text);
+display:flex; align-items:center; gap:10px; padding:5px 14px;
+background:rgba(176,48,40,0.08); border:1px solid rgba(176,48,40,0.25);
+border-left:3px solid var(--alert); border-radius:2px;
+font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text);
 }
-.alert-item.warning { background:rgba(255,214,10,0.08); border-color:rgba(255,214,10,0.25); }
-.alert-icon { font-size:0.9rem; }
-.alert-metric { color:var(--accent3); font-weight:600; margin-right:4px; }
-.alert-item.warning .alert-metric { color:var(--accent4); }
-.alert-dismiss {
-  margin-left:auto; background:none;
-  border:1px solid rgba(255,77,109,0.4); color:var(--accent3);
-  padding:2px 8px; cursor:pointer; font-family:'Rajdhani',sans-serif;
-  font-size:0.7rem; letter-spacing:0.1em; border-radius:2px;
+.alert-item.warning {
+background:rgba(184,140,48,0.07); border-color:rgba(184,140,48,0.22);
+border-left-color:var(--warn);
 }
+.alert-metric { color:var(--alert); font-weight:600; margin-right:4px; font-family:'Cinzel',serif; letter-spacing:0.1em; }
+.alert-item.warning .alert-metric { color:var(--warn); }
 
 /* ── CONTROL BAR ── */
 .control-bar {
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  min-height:52px;
-  position:sticky; top:60px; z-index:99;
+background: linear-gradient(180deg, var(--bg2), var(--bg3));
+border-bottom: 1px solid var(--border2);
+padding: 0 28px;
+display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+min-height:52px;
+position:sticky; top:64px; z-index:99;
 }
 .bar-section { display:flex; align-items:center; gap:8px; }
 .bar-label {
-  font-size:0.68rem; letter-spacing:0.15em; color:var(--text-dim);
-  text-transform:uppercase; font-family:'Rajdhani',sans-serif; white-space:nowrap;
+font-family:'Cinzel',serif; font-size:0.57rem; letter-spacing:0.22em;
+color:var(--text-dim); text-transform:uppercase; white-space:nowrap;
 }
-.bar-divider { width:1px; height:28px; background:var(--border); margin:0 4px; }
+.bar-divider { width:1px; height:26px; background:var(--border2); margin:0 4px; }
 
 .role-btn {
-  padding:4px 14px; border:1px solid var(--border);
-  background:transparent; color:var(--text-dim);
-  font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600;
-  letter-spacing:0.08em; text-transform:uppercase;
-  cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
+padding:4px 14px; border:1px solid var(--border2);
+background:transparent; color:var(--text-dim);
+font-family:'Cinzel',serif; font-size:0.63rem; font-weight:600;
+letter-spacing:0.1em; text-transform:uppercase;
+cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
 }
-.role-btn:hover { border-color:var(--accent); color:var(--accent); }
-.role-btn.active { background:var(--accent); border-color:var(--accent); color:var(--bg); box-shadow:var(--glow); }
-.role-btn[data-role="doctor"].active  { background:var(--accent3); border-color:var(--accent3); color:#fff; }
-.role-btn[data-role="trainer"].active { background:var(--accent2); border-color:var(--accent2); color:var(--bg); }
-.role-btn[data-role="coach"].active   { background:var(--accent4); border-color:var(--accent4); color:var(--bg); }
+.role-btn:hover { border-color:var(--green); color:var(--green2); background:rgba(61,140,88,0.07); }
+.role-btn.active { background:var(--green); border-color:var(--green); color:var(--bg); box-shadow:var(--glow-g); font-weight:700; }
+.role-btn[data-role="doctor"].active { background:var(--water); border-color:var(--water); color:var(--bg); box-shadow:var(--glow-w); }
+.role-btn[data-role="trainer"].active { background:var(--moss); border-color:var(--moss); color:var(--cream); box-shadow:var(--glow-m); }
+.role-btn[data-role="coach"].active { background:var(--bark); border-color:var(--bark); color:var(--cream); }
 
 .athlete-btn {
-  padding:4px 14px; border:1px solid var(--border);
-  background:transparent; color:var(--text-dim);
-  font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600;
-  letter-spacing:0.08em; text-transform:uppercase;
-  cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
+padding:4px 14px; border:1px solid var(--border2);
+background:transparent; color:var(--text-dim);
+font-family:'Cinzel',serif; font-size:0.63rem; font-weight:600;
+letter-spacing:0.1em; text-transform:uppercase;
+cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
 }
-.athlete-btn:hover { border-color:var(--accent5); color:var(--accent5); }
-.athlete-btn.active { background:var(--accent5); border-color:var(--accent5); color:#fff; box-shadow:0 0 16px rgba(191,90,242,0.4); }
+.athlete-btn:hover { border-color:var(--green2); color:var(--green2); background:rgba(90,170,114,0.07); }
+.athlete-btn.active { background:var(--green2); border-color:var(--green2); color:var(--bg); box-shadow:0 0 16px rgba(90,170,114,0.35); font-weight:700; }
 
 .day-btn {
-  padding:4px 10px; border:1px solid var(--border);
-  background:transparent; color:var(--text-dim);
-  font-family:'JetBrains Mono',monospace; font-size:0.7rem;
-  cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
+padding:3px 10px; border:1px solid var(--border);
+background:transparent; color:var(--text-dim);
+font-family:'JetBrains Mono',monospace; font-size:0.65rem;
+cursor:pointer; border-radius:2px; transition:all 0.2s; white-space:nowrap;
 }
-.day-btn:hover { border-color:var(--accent); color:var(--accent); }
-.day-btn.active { background:rgba(0,212,255,0.12); border-color:var(--accent); color:var(--accent); }
+.day-btn:hover { border-color:var(--stone); color:var(--stone); }
+.day-btn.active { background:rgba(122,152,128,0.12); border-color:var(--stone); color:var(--stone); }
 
 /* ── VIEW TABS ── */
 .view-tabs {
-  background:var(--bg2);
-  border-bottom:2px solid var(--border);
-  padding:0 24px; display:flex;
-  position:sticky; top:112px; z-index:98;
-  overflow-x:auto;
+background: var(--bg2);
+border-bottom: 2px solid var(--border2);
+padding: 0 28px; display:flex;
+position:sticky; top:116px; z-index:98;
+overflow-x:auto;
 }
 .view-tab {
-  padding:11px 20px; border:none; background:none;
-  color:var(--text-dim); font-family:'Rajdhani',sans-serif;
-  font-size:0.85rem; font-weight:600;
-  letter-spacing:0.1em; text-transform:uppercase;
-  cursor:pointer; border-bottom:2px solid transparent;
-  margin-bottom:-2px; transition:all 0.2s; white-space:nowrap;
+padding:12px 22px; border:none; background:none;
+color:var(--text-dim); font-family:'Cinzel',serif;
+font-size:0.66rem; font-weight:600;
+letter-spacing:0.16em; text-transform:uppercase;
+cursor:pointer; border-bottom:2px solid transparent;
+margin-bottom:-2px; transition:all 0.2s; white-space:nowrap;
 }
-.view-tab:hover { color:var(--text); }
-.view-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.view-tab:hover { color:var(--cream); }
+.view-tab.active { color:var(--green2); border-bottom-color:var(--green2); text-shadow:0 0 12px rgba(90,170,114,0.45); }
 
-main { position:relative; z-index:1; padding:20px 24px; }
+main { position:relative; z-index:1; padding:22px 28px; }
 
 /* ── KPI ROW ── */
 .kpi-row {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-  gap:10px; margin-bottom:20px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+gap:10px; margin-bottom:20px;
 }
 .kpi {
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:4px; padding:14px 18px;
-  position:relative; overflow:hidden;
-  transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
-  cursor:pointer;
+background: linear-gradient(140deg, var(--panel), var(--panel2));
+border:1px solid var(--border2); border-radius:3px;
+padding:14px 18px;
+position:relative; overflow:hidden;
+transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+cursor:pointer;
 }
 .kpi::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-  background:var(--kpi-color,var(--accent));
+content:''; position:absolute; top:0; left:0; right:0; height:2px;
+background:var(--kpi-color,var(--green));
 }
-.kpi:hover { border-color:var(--kpi-color,var(--accent)); box-shadow:0 0 20px rgba(0,212,255,0.2); transform:translateY(-2px); }
-.kpi.alert-kpi { border-color:var(--accent3) !important; box-shadow:0 0 12px rgba(255,77,109,0.2); }
-.kpi.warn-kpi  { border-color:var(--accent4) !important; box-shadow:0 0 12px rgba(255,214,10,0.2); }
-.kpi-label { font-size:0.66rem; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; font-family:'Rajdhani',sans-serif; margin-bottom:5px; }
-.kpi-value { font-family:'Rajdhani',sans-serif; font-size:1.9rem; font-weight:700; color:var(--text-hi); line-height:1; }
-.kpi-unit  { font-size:0.72rem; color:var(--text-dim); margin-left:3px; }
-.kpi-sub   { font-size:0.70rem; color:var(--text-dim); margin-top:4px; }
-.kpi-nav   { position:absolute; bottom:8px; right:10px; font-size:0.62rem; font-family:'JetBrains Mono',monospace; color:var(--text-dim); opacity:0.5; }
+.kpi:hover {
+border-color:var(--kpi-color,var(--green));
+box-shadow:0 0 18px rgba(61,140,88,0.12);
+transform:translateY(-2px);
+}
+.kpi.alert-kpi { border-color:var(--alert) !important; box-shadow:0 0 14px rgba(176,48,40,0.22); }
+.kpi.warn-kpi { border-color:var(--warn) !important; box-shadow:0 0 14px rgba(184,140,48,0.18); }
+.kpi-label { font-family:'Cinzel',serif; font-size:0.57rem; letter-spacing:0.18em; color:var(--text-dim); text-transform:uppercase; margin-bottom:5px; }
+.kpi-value { font-family:'Cinzel',serif; font-size:1.85rem; font-weight:700; color:var(--text-hi); line-height:1; }
+.kpi-unit { font-family:'JetBrains Mono',monospace; font-size:0.64rem; color:var(--text-dim); margin-left:3px; }
+.kpi-sub { font-family:'JetBrains Mono',monospace; font-size:0.61rem; color:var(--text-dim); margin-top:4px; }
+.kpi-nav { position:absolute; bottom:7px; right:10px; font-size:0.55rem; font-family:'JetBrains Mono',monospace; color:var(--text-dim); opacity:0.4; }
 .kpi-alert-dot {
-  position:absolute; top:10px; right:10px;
-  width:8px; height:8px; border-radius:50%;
-  background:var(--accent3); box-shadow:0 0 6px var(--accent3);
-  animation:pulse-dot 1s ease-in-out infinite; display:none;
+position:absolute; top:10px; right:10px; width:7px; height:7px;
+border-radius:50%; background:var(--alert); box-shadow:0 0 6px var(--alert);
+animation:pulse-dot 1s ease-in-out infinite; display:none;
 }
 .kpi.alert-kpi .kpi-alert-dot { display:block; }
-.kpi.warn-kpi  .kpi-alert-dot { display:block; background:var(--accent4); box-shadow:0 0 6px var(--accent4); }
+.kpi.warn-kpi .kpi-alert-dot { display:block; background:var(--warn); box-shadow:0 0 6px var(--warn); }
 
 /* ── CHART GRID ── */
 .chart-grid {
-  display:grid; grid-template-columns:repeat(12,1fr);
-  gap:14px; margin-bottom:20px;
+display:grid; grid-template-columns:repeat(12,1fr);
+gap:14px; margin-bottom:20px;
 }
 .chart-card {
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:4px; padding:16px 18px; overflow:hidden;
-  position:relative; transition:border-color 0.2s, box-shadow 0.2s;
-  cursor:pointer;
+background: linear-gradient(140deg, var(--panel), var(--panel2));
+border:1px solid var(--border2);
+border-radius:3px; padding:16px 18px; overflow:hidden;
+position:relative; transition:border-color 0.2s, box-shadow 0.2s;
+cursor:pointer;
 }
-.chart-card:hover { border-color:rgba(0,212,255,0.3); box-shadow:0 0 16px rgba(0,212,255,0.08); }
-.chart-card.col-8  { grid-column:span 8; }
-.chart-card.col-6  { grid-column:span 6; }
-.chart-card.col-4  { grid-column:span 4; }
+.chart-card::before {
+content:''; position:absolute; inset:0;
+background:radial-gradient(ellipse at top right, rgba(61,140,88,0.025), transparent 60%);
+pointer-events:none;
+}
+.chart-card:hover { border-color:rgba(90,170,114,0.38); box-shadow:0 0 18px rgba(61,140,88,0.07); }
+.chart-card.col-8 { grid-column:span 8; }
+.chart-card.col-6 { grid-column:span 6; }
+.chart-card.col-4 { grid-column:span 4; }
 .chart-card.col-12 { grid-column:span 12; }
 @media(max-width:1100px) {
-  .chart-card.col-8,.chart-card.col-6,
-  .chart-card.col-4,.chart-card.col-12 { grid-column:span 12; }
+.chart-card.col-8,.chart-card.col-6,
+.chart-card.col-4,.chart-card.col-12 { grid-column:span 12; }
 }
 @media(min-width:1101px) and (max-width:1400px) {
-  .chart-card.col-8 { grid-column:span 8; }
-  .chart-card.col-6 { grid-column:span 6; }
-  .chart-card.col-4 { grid-column:span 4; }
+.chart-card.col-8 { grid-column:span 8; }
+.chart-card.col-6 { grid-column:span 6; }
+.chart-card.col-4 { grid-column:span 4; }
 }
 .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .card-title {
-  font-family:'Rajdhani',sans-serif; font-size:0.82rem; font-weight:600;
-  letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim);
+font-family:'Cinzel',serif; font-size:0.63rem; font-weight:600;
+letter-spacing:0.18em; text-transform:uppercase; color:var(--text-dim);
 }
 .card-badge {
-  font-family:'JetBrains Mono',monospace; font-size:0.68rem;
-  padding:2px 8px; border-radius:2px;
-  background:rgba(0,212,255,0.1); color:var(--accent);
-  border:1px solid rgba(0,212,255,0.2);
+font-family:'JetBrains Mono',monospace; font-size:0.63rem;
+padding:2px 9px; border-radius:2px;
+background:rgba(61,140,88,0.1); color:var(--green2);
+border:1px solid rgba(61,140,88,0.2);
 }
-.card-badge.green  { background:rgba(0,255,157,0.1); color:var(--accent2); border-color:rgba(0,255,157,0.2); }
-.card-badge.yellow { background:rgba(255,214,10,0.1); color:var(--accent4); border-color:rgba(255,214,10,0.2); }
-.card-badge.red    { background:rgba(255,77,109,0.1); color:var(--accent3); border-color:rgba(255,77,109,0.2); }
+.card-badge.green { background:rgba(74,136,120,0.12); color:#6ab8a8; border-color:rgba(74,136,120,0.25); }
+.card-badge.yellow { background:rgba(184,140,48,0.1); color:var(--amber2); border-color:rgba(184,140,48,0.25); }
+.card-badge.red { background:rgba(176,48,40,0.1); color:var(--alert); border-color:rgba(176,48,40,0.25); }
 canvas { max-height:200px; }
 .ecg-canvas { max-height:130px !important; }
 
-/* ── EXPANDED CHART MODAL ── */
+/* ── MODAL ── */
 .modal-backdrop {
-  position:fixed; inset:0; background:rgba(0,0,0,0.85);
-  z-index:200; display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none; transition:opacity 0.25s;
+position:fixed; inset:0; background:rgba(3,8,5,0.93);
+z-index:200; display:flex; align-items:center; justify-content:center;
+opacity:0; pointer-events:none; transition:opacity 0.25s;
 }
 .modal-backdrop.open { opacity:1; pointer-events:all; }
 .modal-box {
-  background:var(--panel); border:1px solid var(--accent);
-  border-radius:6px; padding:24px; width:90vw; max-width:1000px;
-  max-height:85vh; overflow:auto;
-  box-shadow: 0 0 60px rgba(0,212,255,0.2);
-  transform:scale(0.94); transition:transform 0.25s;
+background: linear-gradient(145deg, var(--panel), var(--panel2));
+border:1px solid var(--border2);
+border-top:3px solid var(--green);
+border-radius:4px; padding:28px; width:90vw; max-width:1000px;
+max-height:86vh; overflow:auto;
+box-shadow: 0 0 70px rgba(61,140,88,0.15), 0 40px 80px rgba(0,0,0,0.9);
+transform:scale(0.94) translateY(12px); transition:transform 0.28s cubic-bezier(0.22,1,0.36,1);
 }
-.modal-backdrop.open .modal-box { transform:scale(1); }
-.modal-header {
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:20px;
-}
+.modal-backdrop.open .modal-box { transform:scale(1) translateY(0); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
 .modal-title {
-  font-family:'Rajdhani',sans-serif; font-size:1.1rem; font-weight:700;
-  letter-spacing:0.2em; text-transform:uppercase; color:var(--accent);
+font-family:'Cinzel',serif; font-size:1rem; font-weight:700;
+letter-spacing:0.22em; text-transform:uppercase; color:var(--green2);
+text-shadow:var(--glow-g);
 }
 .modal-close {
-  background:none; border:1px solid var(--border); color:var(--text-dim);
-  width:32px; height:32px; border-radius:2px; cursor:pointer;
-  font-size:1.1rem; display:flex; align-items:center; justify-content:center;
-  transition:all 0.2s;
+background:none; border:1px solid var(--border2); color:var(--text-dim);
+width:32px; height:32px; border-radius:2px; cursor:pointer;
+font-size:1rem; display:flex; align-items:center; justify-content:center;
+transition:all 0.2s; font-family:'JetBrains Mono',monospace;
 }
-.modal-close:hover { border-color:var(--accent3); color:var(--accent3); }
+.modal-close:hover { border-color:var(--alert); color:var(--alert); }
 #modal-canvas-wrap { position:relative; height:420px; }
 #modal-canvas-wrap canvas { max-height:420px !important; }
+
+/* ── CSV IMPORT MODAL ── */
+.csv-modal-backdrop {
+position:fixed; inset:0; background:rgba(3,8,5,0.93);
+z-index:300; display:flex; align-items:center; justify-content:center;
+opacity:0; pointer-events:none; transition:opacity 0.25s;
+}
+.csv-modal-backdrop.open { opacity:1; pointer-events:all; }
+.csv-modal-box {
+background: linear-gradient(145deg, var(--panel), var(--panel2));
+border:1px solid var(--border2); border-top:3px solid var(--green);
+border-radius:4px; padding:32px; width:90vw; max-width:640px;
+box-shadow: 0 0 60px rgba(61,140,88,0.15), 0 30px 60px rgba(0,0,0,0.9);
+transform:scale(0.94) translateY(12px); transition:transform 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+.csv-modal-backdrop.open .csv-modal-box { transform:scale(1) translateY(0); }
+.csv-modal-title {
+font-family:'Cinzel',serif; font-size:0.9rem; font-weight:700;
+letter-spacing:0.2em; text-transform:uppercase; color:var(--green2);
+margin-bottom:6px;
+}
+.csv-modal-sub {
+font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim);
+margin-bottom:22px; line-height:1.7;
+}
+.csv-drop-zone {
+border:2px dashed var(--border2); border-radius:4px;
+padding:32px 20px; text-align:center;
+cursor:pointer; transition:all 0.2s;
+margin-bottom:20px;
+}
+.csv-drop-zone:hover, .csv-drop-zone.dragover {
+border-color:var(--green); background:rgba(61,140,88,0.06);
+}
+.csv-drop-icon { font-size:2rem; margin-bottom:10px; opacity:0.5; color:var(--green2); }
+.csv-drop-text { font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.12em; color:var(--text-dim); text-transform:uppercase; }
+.csv-drop-hint { font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--text-dim); margin-top:6px; opacity:0.6; }
+.csv-schema-title {
+font-family:'Cinzel',serif; font-size:0.62rem; letter-spacing:0.18em;
+text-transform:uppercase; color:var(--stone); margin-bottom:8px;
+}
+.csv-schema-table {
+width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:0.62rem;
+color:var(--text-dim); margin-bottom:22px;
+}
+.csv-schema-table th { color:var(--green2); text-transform:uppercase; letter-spacing:0.1em; padding:4px 8px; text-align:left; border-bottom:1px solid var(--border2); }
+.csv-schema-table td { padding:3px 8px; border-bottom:1px solid rgba(28,51,36,0.5); }
+.csv-schema-table tr:last-child td { border-bottom:none; }
+.csv-schema-table .req { color:var(--green3); }
+.csv-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+.csv-modal-btn {
+padding:6px 18px; border-radius:2px; cursor:pointer;
+font-family:'Cinzel',serif; font-size:0.65rem; font-weight:600;
+letter-spacing:0.1em; text-transform:uppercase; transition:all 0.2s;
+}
+.csv-modal-btn.primary { background:var(--green); border:1px solid var(--green); color:var(--bg); }
+.csv-modal-btn.primary:hover { background:var(--green2); border-color:var(--green2); }
+.csv-modal-btn.secondary { background:transparent; border:1px solid var(--border2); color:var(--text-dim); }
+.csv-modal-btn.secondary:hover { border-color:var(--stone); color:var(--stone); }
+.csv-feedback {
+font-family:'JetBrains Mono',monospace; font-size:0.65rem;
+padding:8px 12px; border-radius:2px; margin-bottom:16px; display:none;
+}
+.csv-feedback.success { background:rgba(61,140,88,0.1); color:var(--green3); border:1px solid rgba(61,140,88,0.25); display:block; }
+.csv-feedback.error { background:rgba(176,48,40,0.1); color:var(--alert); border:1px solid rgba(176,48,40,0.25); display:block; }
 
 /* ── RESTRICTED ── */
 .restricted { position:relative; }
 .restricted > *:not(.lock-overlay) { visibility:hidden; }
 .lock-overlay {
-  position:absolute; inset:0; background:#080c14;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
-  border-radius:4px; z-index:20;
+position:absolute; inset:0;
+background: linear-gradient(140deg, rgba(6,13,9,0.98), rgba(10,21,13,0.98));
+border:1px solid var(--border2);
+display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+border-radius:3px; z-index:20;
 }
-.lock-icon  { font-size:1.8rem; opacity:0.4; }
-.lock-text  {
-  font-family:'Rajdhani',sans-serif; font-size:0.72rem; font-weight:600;
-  letter-spacing:0.2em; text-transform:uppercase; color:var(--text-dim);
-  opacity:0.6; text-align:center; padding:0 16px;
+.lock-icon { font-size:1.5rem; opacity:0.22; color:var(--text-dim); }
+.lock-text {
+font-family:'Cinzel',serif; font-size:0.6rem; font-weight:600;
+letter-spacing:0.2em; text-transform:uppercase;
+color:var(--text-dim); opacity:0.4; text-align:center; padding:0 20px; line-height:1.8;
 }
 
 /* ── SLEEP BARS ── */
-.sleep-bar-container { margin-top:8px; }
+.sleep-bar-container { margin-top:9px; }
 .sleep-stage-row { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
-.sleep-stage-label { font-size:0.7rem; font-family:'JetBrains Mono',monospace; color:var(--text-dim); width:46px; }
-.sleep-bar-bg { flex:1; height:9px; background:var(--bg3); border-radius:2px; overflow:hidden; }
-.sleep-bar-fill { height:100%; border-radius:2px; transition:width 0.6s ease; }
-.sleep-stage-val { font-size:0.7rem; font-family:'JetBrains Mono',monospace; color:var(--text); width:34px; text-align:right; }
+.sleep-stage-label { font-size:0.61rem; font-family:'JetBrains Mono',monospace; color:var(--text-dim); width:46px; text-transform:uppercase; letter-spacing:0.1em; }
+.sleep-bar-bg { flex:1; height:8px; background:var(--bg3); border-radius:10px; overflow:hidden; }
+.sleep-bar-fill { height:100%; border-radius:10px; transition:width 0.7s ease; }
+.sleep-stage-val { font-size:0.61rem; font-family:'JetBrains Mono',monospace; color:var(--text); width:34px; text-align:right; }
 
-/* ── MENSTRUAL ── */
+/* ── CYCLE ── */
 .cycle-ring { display:flex; align-items:center; justify-content:center; margin:10px 0; }
-.phase-pill { padding:5px 16px; border-radius:20px; font-family:'Rajdhani',sans-serif; font-size:0.88rem; font-weight:600; letter-spacing:0.1em; }
-.phase-1 { background:rgba(255,77,109,0.2);  color:var(--accent3); border:1px solid var(--accent3); }
-.phase-2 { background:rgba(0,212,255,0.15);  color:var(--accent);  border:1px solid var(--accent); }
-.phase-3 { background:rgba(0,255,157,0.15);  color:var(--accent2); border:1px solid var(--accent2); }
-.phase-4 { background:rgba(191,90,242,0.15); color:var(--accent5); border:1px solid var(--accent5); }
-.cycle-days { font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim); text-align:center; margin-top:5px; }
+.phase-pill { padding:5px 18px; border-radius:20px; font-family:'Cinzel',serif; font-size:0.73rem; font-weight:600; letter-spacing:0.12em; }
+.phase-1 { background:rgba(176,48,40,0.16); color:var(--alert); border:1px solid var(--alert); }
+.phase-2 { background:rgba(61,140,88,0.14); color:var(--green2); border:1px solid var(--green); }
+.phase-3 { background:rgba(74,136,120,0.14); color:#6ab8a8; border:1px solid var(--water); }
+.phase-4 { background:rgba(184,140,48,0.14); color:var(--amber2); border:1px solid var(--amber); }
+.cycle-days { font-family:'JetBrains Mono',monospace; font-size:0.61rem; color:var(--text-dim); text-align:center; margin-top:6px; }
 
 /* ── FALL ALERT ── */
 .fall-alert {
-  background:rgba(255,77,109,0.1); border:1px solid var(--accent3);
-  border-radius:4px; padding:10px 16px;
-  display:flex; align-items:center; gap:12px;
-  margin-bottom:16px;
-  animation:flash-border 1s ease-in-out infinite;
+background:rgba(176,48,40,0.1); border:1px solid var(--alert);
+border-radius:3px; padding:10px 18px;
+display:flex; align-items:center; gap:14px; margin-bottom:16px;
+animation:flash-border 1s ease-in-out infinite;
 }
 .fall-alert.hidden { display:none; }
 @keyframes flash-border {
-  0%,100%{border-color:var(--accent3);}
-  50%{border-color:rgba(255,77,109,0.2);}
+0%,100%{ border-color:var(--alert); box-shadow:0 0 10px rgba(176,48,40,0.25); }
+50%{ border-color:rgba(176,48,40,0.2); box-shadow:none; }
 }
-.fall-icon { font-size:1.4rem; }
-.fall-text { font-family:'Rajdhani',sans-serif; font-size:0.88rem; font-weight:600; color:var(--accent3); }
-.fall-time { font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim); }
+.fall-text { font-family:'Cinzel',serif; font-size:0.78rem; font-weight:700; color:var(--alert); letter-spacing:0.12em; text-transform:uppercase; }
+.fall-time { font-family:'JetBrains Mono',monospace; font-size:0.61rem; color:var(--text-dim); margin-top:2px; }
 
 /* ── BODY COMP ── */
-.body-comp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px; }
+.body-comp-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
 .comp-item { text-align:center; }
-.comp-ring { width:66px; height:66px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 5px; }
-.comp-val { font-family:'Rajdhani',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text-hi); }
-.comp-lbl { font-size:0.62rem; letter-spacing:0.1em; color:var(--text-dim); text-transform:uppercase; }
+.comp-ring { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 5px; }
+.comp-val { font-family:'Cinzel',serif; font-size:0.95rem; font-weight:700; color:var(--text-hi); }
+.comp-lbl { font-size:0.57rem; letter-spacing:0.12em; color:var(--text-dim); text-transform:uppercase; font-family:'Cinzel',serif; }
 
 /* ── READINESS ── */
-.readiness-wrap { text-align:center; padding:8px; }
-.readiness-score { font-family:'Rajdhani',sans-serif; font-size:3.2rem; font-weight:700; line-height:1; }
-.readiness-score.high   { color:var(--accent2); text-shadow:var(--glow2); }
-.readiness-score.medium { color:var(--accent4); }
-.readiness-score.low    { color:var(--accent3); }
-.gauge-label { font-size:0.68rem; color:var(--text-dim); text-align:center; font-family:'JetBrains Mono',monospace; }
-.gauge-num   { font-family:'Rajdhani',sans-serif; font-size:2.4rem; font-weight:700; color:var(--text-hi); text-align:center; }
+.readiness-wrap { text-align:center; padding:10px; }
+.readiness-score { font-family:'Cinzel',serif; font-size:3rem; font-weight:700; line-height:1; }
+.readiness-score.high { color:var(--green2); text-shadow:var(--glow-g); }
+.readiness-score.medium { color:var(--amber2); text-shadow:var(--glow-a); }
+.readiness-score.low { color:var(--alert); text-shadow:0 0 18px rgba(176,48,40,0.4); }
+.gauge-label { font-size:0.61rem; color:var(--text-dim); text-align:center; font-family:'JetBrains Mono',monospace; letter-spacing:0.1em; }
+.gauge-num { font-family:'Cinzel',serif; font-size:2.3rem; font-weight:700; color:var(--text-hi); text-align:center; }
 
 /* ── ANTIOXIDANT ── */
-.antioxidant-bar { height:14px; background:var(--bg3); border-radius:2px; margin-top:8px; overflow:hidden; }
-.antioxidant-fill { height:100%; background:linear-gradient(90deg,#ff4d6d,#ffd60a,#00ff9d); border-radius:2px; transition:width 0.6s; }
+.antioxidant-bar { height:10px; background:var(--bg3); border-radius:20px; margin-top:9px; overflow:hidden; border:1px solid var(--border); }
+.antioxidant-fill { height:100%; background:linear-gradient(90deg, var(--moss), var(--green), var(--green2), var(--water)); border-radius:20px; transition:width 0.7s ease; }
 
 /* ── ATHLETE INFO ── */
 .athlete-info {
-  background:var(--panel); border:1px solid var(--border);
-  border-left:3px solid var(--accent5);
-  border-radius:4px; padding:12px 18px;
-  display:flex; align-items:center; gap:20px;
-  margin-bottom:16px; flex-wrap:wrap;
+background: linear-gradient(140deg, var(--panel), var(--panel2));
+border:1px solid var(--border2); border-left:3px solid var(--green);
+border-radius:3px; padding:14px 22px;
+display:flex; align-items:center; gap:22px;
+margin-bottom:18px; flex-wrap:wrap; position:relative; overflow:hidden;
 }
-.athlete-info-name { font-family:'Rajdhani',sans-serif; font-size:1.2rem; font-weight:700; color:var(--text-hi); letter-spacing:0.1em; }
-.athlete-info-detail { font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--text-dim); display:flex; gap:16px; flex-wrap:wrap; }
+.athlete-info::after {
+content:''; position:absolute; right:-10px; top:-10px; width:110px; height:110px;
+background:radial-gradient(circle, rgba(61,140,88,0.06), transparent 70%); pointer-events:none;
+}
+.athlete-info-name { font-family:'Cinzel',serif; font-size:1.05rem; font-weight:700; color:var(--text-hi); letter-spacing:0.14em; text-transform:uppercase; }
+.athlete-info-sub { font-family:'Crimson Pro',serif; font-style:italic; font-size:0.86rem; color:var(--green2); margin-top:3px; }
+.athlete-info-detail { font-family:'JetBrains Mono',monospace; font-size:0.64rem; color:var(--text-dim); display:flex; gap:18px; flex-wrap:wrap; }
 .athlete-info-detail b { color:var(--text); }
 
 /* ── WEEKLY AVERAGES ── */
-.weekly-stat-grid {
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:12px; margin-bottom:20px;
-}
+.weekly-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px; }
 .weekly-stat-card {
-  background:var(--panel); border:1px solid var(--border);
-  border-radius:4px; padding:16px 20px;
-  position:relative; overflow:hidden;
-  cursor:pointer; transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+background: linear-gradient(140deg, var(--panel), var(--panel2));
+border:1px solid var(--border2); border-radius:3px; padding:16px 20px;
+position:relative; overflow:hidden;
+cursor:pointer; transition:border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .weekly-stat-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:2px;
-  background:var(--card-color,var(--accent));
+content:''; position:absolute; top:0; left:0; right:0; height:2px;
+background:var(--card-color,var(--green));
 }
-.weekly-stat-card:hover { border-color:var(--card-color,var(--accent)); box-shadow:0 0 20px rgba(0,212,255,0.15); transform:translateY(-2px); }
-.weekly-stat-label { font-size:0.68rem; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase; font-family:'Rajdhani',sans-serif; margin-bottom:6px; }
-.weekly-stat-value { font-family:'Rajdhani',sans-serif; font-size:2rem; font-weight:700; color:var(--text-hi); line-height:1; }
-.weekly-stat-unit  { font-size:0.72rem; color:var(--text-dim); margin-left:3px; }
-.weekly-stat-sub {
-  font-size:0.68rem; color:var(--text-dim); margin-top:4px;
-  display:flex; justify-content:space-between;
-  font-family:'JetBrains Mono',monospace;
-}
-.weekly-stat-sub .hi { color:var(--accent2); }
-.weekly-stat-sub .lo { color:var(--accent3); }
+.weekly-stat-card:hover { border-color:var(--card-color,var(--green)); box-shadow:0 0 16px rgba(61,140,88,0.09); transform:translateY(-2px); }
+.weekly-stat-label { font-family:'Cinzel',serif; font-size:0.57rem; letter-spacing:0.16em; color:var(--text-dim); text-transform:uppercase; margin-bottom:7px; }
+.weekly-stat-value { font-family:'Cinzel',serif; font-size:1.9rem; font-weight:700; color:var(--text-hi); line-height:1; }
+.weekly-stat-unit { font-family:'JetBrains Mono',monospace; font-size:0.64rem; color:var(--text-dim); margin-left:3px; }
+.weekly-stat-sub { font-size:0.61rem; color:var(--text-dim); margin-top:5px; display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; }
+.weekly-stat-sub .hi { color:var(--green2); }
+.weekly-stat-sub .lo { color:var(--alert); }
 .weekly-section-title {
-  font-family:'Rajdhani',sans-serif; font-size:0.75rem; font-weight:700;
-  letter-spacing:0.2em; text-transform:uppercase; color:var(--text-dim);
-  border-bottom:1px solid var(--border); padding-bottom:8px;
-  margin:20px 0 14px; display:flex; align-items:center; gap:8px;
+font-family:'Cinzel',serif; font-size:0.66rem; font-weight:700;
+letter-spacing:0.28em; text-transform:uppercase; color:var(--green2);
+border-bottom:1px solid var(--border2); padding-bottom:10px;
+margin:24px 0 14px; display:flex; align-items:center; gap:10px;
 }
-.weekly-section-title::before { content:''; display:inline-block; width:3px; height:14px; background:var(--accent); border-radius:2px; }
+.weekly-section-title::before { content:''; display:inline-block; width:18px; height:1px; background:linear-gradient(90deg,var(--green),transparent); margin-right:2px; }
+.weekly-section-title::after { content:''; display:inline-block; flex:1; height:1px; background:linear-gradient(90deg,var(--border2),transparent); margin-left:2px; }
 
-/* ── VIEW PANELS ── */
 .view-panel { display:none; }
 .view-panel.active { display:block; }
 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:var(--bg2); }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--green); }
 </style>
+
 </head>
 <body>
 
 <!-- HEADER -->
+
 <header>
-  <div class="logo">BIO<span>MON</span></div>
-  <div style="display:flex;align-items:center;gap:16px">
-    <span><span class="live-dot"></span><span class="live-label">LIVE SYNC</span></span>
-    <div class="clock" id="clock">--:--:--</div>
-  </div>
-  <div class="header-right">
-    <div id="athlete-label" style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--text-dim)">
-      ATHLETE: <span style="color:var(--accent5)">--</span>
-    </div>
-  </div>
+<div class="logo">BIO<span>MON</span></div>
+<div style="display:flex;align-items:center;gap:14px">
+<span><span class="live-dot"></span><span class="live-label">Live Sync</span></span>
+<div class="clock" id="clock">--:--:--</div>
+</div>
+<div class="header-right">
+<!-- CSV import controls -->
+<div class="csv-badge" id="csv-badge">
+<span id="csv-badge-name">imported.csv</span>
+<button onclick="clearCsvData()" title="Remove imported data">&#10005;</button>
+</div>
+<button class="csv-btn" id="csv-btn" onclick="openCsvModal()">
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+<path d="M8 2v8M5 7l3 3 3-3M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/>
+</svg>
+Import CSV
+</button>
+<input type="file" id="csv-file-input" accept=".csv" onchange="handleCsvFile(event)">
+<div id="athlete-label">Athlete: <span>--</span></div>
+</div>
 </header>
 
 <!-- ALERT BANNER -->
+
 <div class="alert-banner" id="alert-banner">
-  <div class="alert-banner-title">
-    <span>⚠</span> ACTIVE ALERTS
-    <button onclick="dismissAlerts()" style="margin-left:auto;background:none;border:1px solid rgba(255,77,109,0.4);color:var(--accent3);padding:2px 10px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:0.7rem;letter-spacing:0.1em;border-radius:2px;">DISMISS ALL</button>
-  </div>
-  <div id="alert-list"></div>
+<div class="alert-banner-title">
+Active Alerts — Immediate Attention Required
+<button onclick="dismissAlerts()" style="margin-left:auto;background:none;border:1px solid rgba(176,48,40,0.4);color:var(--alert);padding:2px 12px;cursor:pointer;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.12em;border-radius:2px;">Clear All</button>
+</div>
+<div id="alert-list"></div>
 </div>
 
 <!-- FALL ALERT -->
-<div id="fall-alert" class="fall-alert hidden" style="margin:12px 24px 0;">
-  <span class="fall-icon">🚨</span>
-  <div>
-    <div class="fall-text">FALL DETECTED — IMMEDIATE ATTENTION REQUIRED</div>
-    <div class="fall-time" id="fall-time">--</div>
-  </div>
-  <button onclick="document.getElementById('fall-alert').classList.add('hidden')"
-    style="margin-left:auto;background:none;border:1px solid var(--accent3);color:var(--accent3);padding:3px 10px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:0.75rem;letter-spacing:0.1em;border-radius:2px;">DISMISS</button>
+
+<div id="fall-alert" class="fall-alert hidden" style="margin:12px 28px 0;">
+<span style="font-size:1.2rem;color:var(--alert)">&#9888;</span>
+<div>
+<div class="fall-text">Fall Detected — Immediate Attention Required</div>
+<div class="fall-time" id="fall-time">--</div>
+</div>
+<button onclick="document.getElementById('fall-alert').classList.add('hidden')"
+style="margin-left:auto;background:none;border:1px solid var(--alert);color:var(--alert);padding:3px 12px;cursor:pointer;font-family:'Cinzel',serif;font-size:0.63rem;letter-spacing:0.1em;border-radius:2px;">Dismiss</button>
 </div>
 
 <!-- CONTROL BAR -->
+
 <div class="control-bar">
-  <div class="bar-section">
-    <span class="bar-label">Role:</span>
-    <button class="role-btn active" data-role="athlete" onclick="setRole('athlete')">Athlete</button>
-    <button class="role-btn" data-role="doctor"  onclick="setRole('doctor')">Doctor</button>
-    <button class="role-btn" data-role="trainer" onclick="setRole('trainer')">Trainer</button>
-    <button class="role-btn" data-role="coach"   onclick="setRole('coach')">Coach</button>
-  </div>
-  <div class="bar-divider"></div>
-  <div class="bar-section">
-    <span class="bar-label">Athlete:</span>
-    <div id="athlete-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-  </div>
-  <div class="bar-divider"></div>
-  <div class="bar-section">
-    <span class="bar-label">Day:</span>
-    <div id="day-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-  </div>
+<div class="bar-section">
+<span class="bar-label">View As</span>
+<button class="role-btn active" data-role="athlete" onclick="setRole('athlete')">Athlete</button>
+<button class="role-btn" data-role="doctor" onclick="setRole('doctor')">Doctor</button>
+<button class="role-btn" data-role="trainer" onclick="setRole('trainer')">Trainer</button>
+<button class="role-btn" data-role="coach" onclick="setRole('coach')">Coach</button>
+</div>
+<div class="bar-divider"></div>
+<div class="bar-section">
+<span class="bar-label">Athlete</span>
+<div id="athlete-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+</div>
+<div class="bar-divider"></div>
+<div class="bar-section">
+<span class="bar-label">Day</span>
+<div id="day-btns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+</div>
 </div>
 
 <!-- VIEW TABS -->
+
 <div class="view-tabs">
-  <button class="view-tab active" onclick="setView('overview')">Overview</button>
-  <button class="view-tab" onclick="setView('vitals')">Vitals &amp; Cardio</button>
-  <button class="view-tab" onclick="setView('recovery')">Recovery &amp; Sleep</button>
-  <button class="view-tab" onclick="setView('performance')">Performance</button>
-  <button class="view-tab" onclick="setView('weekly')">Weekly Averages</button>
+<button class="view-tab active" onclick="setView('overview')">Overview</button>
+<button class="view-tab" onclick="setView('vitals')">Vitals &amp; Cardio</button>
+<button class="view-tab" onclick="setView('recovery')">Recovery &amp; Sleep</button>
+<button class="view-tab" onclick="setView('performance')">Performance</button>
+<button class="view-tab" onclick="setView('weekly')">Weekly Averages</button>
 </div>
 
-<!-- MODAL for expanded charts -->
+<!-- CHART EXPAND MODAL -->
+
 <div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div class="modal-title" id="modal-title">Chart</div>
-      <button class="modal-close" onclick="closeModalBtn()">✕</button>
-    </div>
-    <div id="modal-canvas-wrap">
-      <canvas id="modal-canvas"></canvas>
-    </div>
-    <div id="modal-stats" style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;"></div>
-  </div>
+<div class="modal-box">
+<div class="modal-header">
+<div class="modal-title" id="modal-title">—</div>
+<button class="modal-close" onclick="closeModalBtn()">&#10005;</button>
+</div>
+<div id="modal-canvas-wrap"><canvas id="modal-canvas"></canvas></div>
+<div id="modal-stats" style="margin-top:16px;display:flex;gap:16px;flex-wrap:wrap;"></div>
+</div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+
+<div class="csv-modal-backdrop" id="csv-modal-backdrop" onclick="closeCsvModal(event)">
+<div class="csv-modal-box">
+<div class="csv-modal-title">Import CSV Data</div>
+<div class="csv-modal-sub">
+Upload a CSV file to replace the session data. Original built-in data is always restored on page reload.<br>
+Drop a file below or click to browse.
+</div>
+
+```
+<div id="csv-feedback" class="csv-feedback"></div>
+
+<div class="csv-drop-zone" id="csv-drop-zone"
+onclick="document.getElementById('csv-file-input2').click()"
+ondragover="csvDragOver(event)" ondragleave="csvDragLeave(event)" ondrop="csvDrop(event)">
+<div class="csv-drop-icon">&#8659;</div>
+<div class="csv-drop-text">Drop CSV file here or click to browse</div>
+<div class="csv-drop-hint">Accepts .csv files · Session only · Reloads restore original data</div>
+</div>
+<input type="file" id="csv-file-input2" accept=".csv" style="display:none" onchange="handleCsvFile(event)">
+
+<div class="csv-schema-title">Required CSV Columns</div>
+<table class="csv-schema-table">
+<tr><th>Column</th><th>Type</th><th>Description</th><th>Required</th></tr>
+<tr><td>athlete_name</td><td>text</td><td>Athlete full name (e.g. "J. Williams")</td><td class="req">Yes</td></tr>
+<tr><td>athlete_number</td><td>number</td><td>Jersey number</td><td class="req">Yes</td></tr>
+<tr><td>date</td><td>YYYY-MM-DD</td><td>Measurement date</td><td class="req">Yes</td></tr>
+<tr><td>heart_rate</td><td>number</td><td>Average heart rate (bpm)</td><td class="req">Yes</td></tr>
+<tr><td>spo2</td><td>number</td><td>Blood oxygen %</td><td class="req">Yes</td></tr>
+<tr><td>steps</td><td>number</td><td>Daily step count</td><td class="req">Yes</td></tr>
+<tr><td>calories</td><td>number</td><td>Calories burned</td><td class="req">Yes</td></tr>
+<tr><td>active_minutes</td><td>number</td><td>Active minutes</td><td class="req">Yes</td></tr>
+<tr><td>energy</td><td>0–100</td><td>Energy score</td><td class="req">Yes</td></tr>
+<tr><td>stress</td><td>0–100</td><td>Stress level</td><td class="req">Yes</td></tr>
+<tr><td>readiness</td><td>0–100</td><td>Readiness score</td><td class="req">Yes</td></tr>
+<tr><td>sbp</td><td>number</td><td>Systolic BP (mmHg)</td><td>Optional</td></tr>
+<tr><td>dbp</td><td>number</td><td>Diastolic BP (mmHg)</td><td>Optional</td></tr>
+<tr><td>sleep_deep</td><td>hours</td><td>Deep sleep duration</td><td>Optional</td></tr>
+<tr><td>sleep_light</td><td>hours</td><td>Light sleep duration</td><td>Optional</td></tr>
+<tr><td>sleep_rem</td><td>hours</td><td>REM sleep duration</td><td>Optional</td></tr>
+<tr><td>body_fat</td><td>%</td><td>Body fat percentage</td><td>Optional</td></tr>
+<tr><td>muscle_kg</td><td>kg</td><td>Muscle mass</td><td>Optional</td></tr>
+<tr><td>apnea_events</td><td>number</td><td>Sleep apnea events</td><td>Optional</td></tr>
+<tr><td>resting_hr</td><td>number</td><td>Resting heart rate</td><td>Optional</td></tr>
+</table>
+
+<div class="csv-modal-actions">
+<button class="csv-modal-btn secondary" onclick="document.getElementById('csv-modal-backdrop').classList.remove('open')">Cancel</button>
+<button class="csv-modal-btn primary" onclick="document.getElementById('csv-file-input2').click()">Browse File</button>
+</div>
+```
+
+</div>
 </div>
 
 <main>
 
-<!-- ═══════ OVERVIEW ═══════ -->
+<!-- OVERVIEW -->
+
 <div class="view-panel active" id="view-overview">
-  <div id="athlete-info-card" class="athlete-info"></div>
-  <div class="kpi-row" id="kpi-row"></div>
-  <div class="chart-grid">
-
-    <div class="chart-card col-8" onclick="expandChart('hr')">
-      <div class="card-header">
-        <span class="card-title">Heart Rate</span>
-        <span class="card-badge" id="hr-badge">-- bpm</span>
-      </div>
-      <canvas id="chart-hr"></canvas>
-    </div>
-
-    <div class="chart-card col-4" id="card-energy" onclick="expandChart('energy')">
-      <div class="card-header"><span class="card-title">Energy Score</span></div>
-      <div class="readiness-wrap">
-        <div class="readiness-score high" id="energy-big">--</div>
-        <div class="gauge-label">/ 100</div>
-        <div id="energy-label" style="margin-top:6px;font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">Calculating...</div>
-      </div>
-      <canvas id="chart-energy" style="max-height:90px"></canvas>
-    </div>
-
-    <div class="chart-card col-6" onclick="expandChart('steps')">
-      <div class="card-header">
-        <span class="card-title">Steps</span>
-        <span class="card-badge green" id="steps-badge">-- steps</span>
-      </div>
-      <canvas id="chart-steps"></canvas>
-    </div>
-
-    <div class="chart-card col-6" onclick="expandChart('calories')">
-      <div class="card-header">
-        <span class="card-title">Calories Burned</span>
-        <span class="card-badge" id="cal-badge">-- kcal</span>
-      </div>
-      <canvas id="chart-calories"></canvas>
-    </div>
-
-    <div class="chart-card col-4" id="card-spo2" onclick="expandChart('spo2')">
-      <div class="card-header"><span class="card-title">Blood Oxygen SpO2</span></div>
-      <canvas id="chart-spo2"></canvas>
-    </div>
-
-    <div class="chart-card col-4" id="card-stress" onclick="expandChart('stress')">
-      <div class="card-header"><span class="card-title">Stress Level</span></div>
-      <canvas id="chart-stress"></canvas>
-    </div>
-
-    <div class="chart-card col-4" onclick="expandChart('active')">
-      <div class="card-header"><span class="card-title">Active Minutes</span></div>
-      <canvas id="chart-active"></canvas>
-    </div>
-
-  </div>
+<div id="athlete-info-card" class="athlete-info"></div>
+<div class="kpi-row" id="kpi-row"></div>
+<div class="chart-grid">
+<div class="chart-card col-8" onclick="expandChart('hr')">
+<div class="card-header"><span class="card-title">Heart Rate</span><span class="card-badge" id="hr-badge">-- bpm</span></div>
+<canvas id="chart-hr"></canvas>
+</div>
+<div class="chart-card col-4" id="card-energy" onclick="expandChart('energy')">
+<div class="card-header"><span class="card-title">Energy Score</span></div>
+<div class="readiness-wrap">
+<div class="readiness-score high" id="energy-big">--</div>
+<div class="gauge-label">/ 100</div>
+<div id="energy-label" style="margin-top:7px;font-size:0.64rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;">Calculating...</div>
+</div>
+<canvas id="chart-energy" style="max-height:88px"></canvas>
+</div>
+<div class="chart-card col-6" onclick="expandChart('steps')">
+<div class="card-header"><span class="card-title">Steps</span><span class="card-badge green" id="steps-badge">-- steps</span></div>
+<canvas id="chart-steps"></canvas>
+</div>
+<div class="chart-card col-6" onclick="expandChart('calories')">
+<div class="card-header"><span class="card-title">Calories Burned</span><span class="card-badge" id="cal-badge">-- kcal</span></div>
+<canvas id="chart-calories"></canvas>
+</div>
+<div class="chart-card col-4" id="card-spo2" onclick="expandChart('spo2')">
+<div class="card-header"><span class="card-title">Blood Oxygen SpO2</span></div>
+<canvas id="chart-spo2"></canvas>
+</div>
+<div class="chart-card col-4" id="card-stress" onclick="expandChart('stress')">
+<div class="card-header"><span class="card-title">Stress Level</span></div>
+<canvas id="chart-stress"></canvas>
+</div>
+<div class="chart-card col-4" onclick="expandChart('active')">
+<div class="card-header"><span class="card-title">Active Minutes</span></div>
+<canvas id="chart-active"></canvas>
+</div>
+</div>
 </div>
 
-<!-- ═══════ VITALS & CARDIO ═══════ -->
+<!-- VITALS & CARDIO -->
+
 <div class="view-panel" id="view-vitals">
-  <div class="chart-grid">
-
-    <div class="chart-card col-12" id="card-ecg" onclick="expandChart('ecg')">
-      <div class="card-header">
-        <span class="card-title">ECG Waveform</span>
-        <span class="card-badge green">NSR — Normal Sinus Rhythm</span>
-      </div>
-      <canvas id="chart-ecg" class="ecg-canvas"></canvas>
-    </div>
-
-    <div class="chart-card col-6" id="card-bp" onclick="expandChart('bp')">
-      <div class="card-header">
-        <span class="card-title">Blood Pressure</span>
-        <span class="card-badge" id="bp-badge">--/-- mmHg</span>
-      </div>
-      <canvas id="chart-bp"></canvas>
-    </div>
-
-    <div class="chart-card col-6" onclick="expandChart('hrzone')">
-      <div class="card-header"><span class="card-title">HR Zone Distribution</span></div>
-      <canvas id="chart-hrzone"></canvas>
-    </div>
-
-    <div class="chart-card col-6" id="card-hrv" onclick="expandChart('hr24')">
-      <div class="card-header"><span class="card-title">Heart Rate — Hourly</span></div>
-      <canvas id="chart-hr24"></canvas>
-    </div>
-
-    <div class="chart-card col-6" id="card-antioxidant" onclick="expandChart('antioxidant')">
-      <div class="card-header">
-        <span class="card-title">Antioxidant Index (Carotenoids)</span>
-        <span class="card-badge yellow" id="anti-badge">--</span>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:12px;">
-        <div class="gauge-num" id="anti-num" style="color:var(--accent4)">--</div>
-        <div class="gauge-label">Score / 100</div>
-      </div>
-      <div class="antioxidant-bar"><div class="antioxidant-fill" id="anti-bar" style="width:0%"></div></div>
-      <div style="margin-top:6px;font-size:0.68rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">Optimal range: 45–70 · Skin carotenoid sensor</div>
-      <canvas id="chart-antioxidant" style="max-height:70px;margin-top:10px"></canvas>
-    </div>
-
-  </div>
+<div class="chart-grid">
+<div class="chart-card col-12" id="card-ecg" onclick="expandChart('ecg')">
+<div class="card-header"><span class="card-title">ECG Waveform</span><span class="card-badge green">NSR — Normal Sinus Rhythm</span></div>
+<canvas id="chart-ecg" class="ecg-canvas"></canvas>
+</div>
+<div class="chart-card col-6" id="card-bp" onclick="expandChart('bp')">
+<div class="card-header"><span class="card-title">Blood Pressure</span><span class="card-badge" id="bp-badge">--/-- mmHg</span></div>
+<canvas id="chart-bp"></canvas>
+</div>
+<div class="chart-card col-6" onclick="expandChart('hrzone')">
+<div class="card-header"><span class="card-title">HR Zone Distribution</span></div>
+<canvas id="chart-hrzone"></canvas>
+</div>
+<div class="chart-card col-6" id="card-hrv" onclick="expandChart('hr24')">
+<div class="card-header"><span class="card-title">Heart Rate — Hourly</span></div>
+<canvas id="chart-hr24"></canvas>
+</div>
+<div class="chart-card col-6" id="card-antioxidant" onclick="expandChart('antioxidant')">
+<div class="card-header"><span class="card-title">Antioxidant Index (Carotenoids)</span><span class="card-badge yellow" id="anti-badge">--</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-top:10px;">
+<div class="gauge-num" id="anti-num" style="color:var(--amber2)">--</div>
+<div class="gauge-label">Score / 100</div>
+</div>
+<div class="antioxidant-bar"><div class="antioxidant-fill" id="anti-bar" style="width:0%"></div></div>
+<div style="margin-top:7px;font-size:0.61rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">Optimal: 45–70 · Skin carotenoid sensor</div>
+<canvas id="chart-antioxidant" style="max-height:70px;margin-top:10px"></canvas>
+</div>
+</div>
 </div>
 
-<!-- ═══════ RECOVERY & SLEEP ═══════ -->
+<!-- RECOVERY & SLEEP -->
+
 <div class="view-panel" id="view-recovery">
-  <div class="chart-grid">
-
-    <div class="chart-card col-6" id="card-sleep" onclick="expandChart('sleep')">
-      <div class="card-header">
-        <span class="card-title">Sleep Stages</span>
-        <span class="card-badge" id="sleep-total-badge">-- hrs</span>
-      </div>
-      <canvas id="chart-sleep"></canvas>
-      <div class="sleep-bar-container" id="sleep-bars"></div>
-    </div>
-
-    <div class="chart-card col-6" id="card-apnea" onclick="expandChart('apnea')">
-      <div class="card-header">
-        <span class="card-title">Sleep Apnea Events</span>
-        <span class="card-badge" id="apnea-badge">-- events</span>
-      </div>
-      <canvas id="chart-apnea"></canvas>
-    </div>
-
-    <div class="chart-card col-4" id="card-menstrual" onclick="expandChart('cycle')">
-      <div class="card-header"><span class="card-title">Menstrual Cycle</span></div>
-      <div class="cycle-ring">
-        <div class="phase-pill phase-2" id="cycle-phase-pill">--</div>
-      </div>
-      <div class="cycle-days" id="cycle-days-info">-- of cycle</div>
-      <canvas id="chart-cycle" style="max-height:110px;margin-top:10px"></canvas>
-    </div>
-
-    <div class="chart-card col-4" id="card-body" onclick="expandChart('body')">
-      <div class="card-header"><span class="card-title">Body Composition</span></div>
-      <div class="body-comp-grid">
-        <div class="comp-item">
-          <div class="comp-ring" style="border:3px solid var(--accent3)"><span class="comp-val" id="bc-fat">--</span></div>
-          <div class="comp-lbl">Body Fat %</div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-ring" style="border:3px solid var(--accent2)"><span class="comp-val" id="bc-muscle">--</span></div>
-          <div class="comp-lbl">Muscle kg</div>
-        </div>
-        <div class="comp-item">
-          <div class="comp-ring" style="border:3px solid var(--accent)"><span class="comp-val" id="bc-bmi">--</span></div>
-          <div class="comp-lbl">BMI</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chart-card col-4" id="card-recovery-score" onclick="expandChart('readiness')">
-      <div class="card-header"><span class="card-title">Readiness Score</span></div>
-      <div class="readiness-wrap">
-        <div class="readiness-score high" id="readiness-big">--</div>
-        <div class="gauge-label">READINESS / 100</div>
-        <div style="margin-top:10px;font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">Based on sleep, HRV, SpO2, stress</div>
-      </div>
-      <canvas id="chart-readiness" style="max-height:80px;margin-top:6px"></canvas>
-    </div>
-
-  </div>
+<div class="chart-grid">
+<div class="chart-card col-6" id="card-sleep" onclick="expandChart('sleep')">
+<div class="card-header"><span class="card-title">Sleep Stages</span><span class="card-badge" id="sleep-total-badge">-- hrs</span></div>
+<canvas id="chart-sleep"></canvas>
+<div class="sleep-bar-container" id="sleep-bars"></div>
+</div>
+<div class="chart-card col-6" id="card-apnea" onclick="expandChart('apnea')">
+<div class="card-header"><span class="card-title">Sleep Apnea Events</span><span class="card-badge" id="apnea-badge">-- events</span></div>
+<canvas id="chart-apnea"></canvas>
+</div>
+<div class="chart-card col-4" id="card-menstrual" onclick="expandChart('cycle')">
+<div class="card-header"><span class="card-title">Menstrual Cycle</span></div>
+<div class="cycle-ring"><div class="phase-pill phase-2" id="cycle-phase-pill">--</div></div>
+<div class="cycle-days" id="cycle-days-info">-- of cycle</div>
+<canvas id="chart-cycle" style="max-height:110px;margin-top:10px"></canvas>
+</div>
+<div class="chart-card col-4" id="card-body" onclick="expandChart('body')">
+<div class="card-header"><span class="card-title">Body Composition</span></div>
+<div class="body-comp-grid">
+<div class="comp-item">
+<div class="comp-ring" style="border:3px solid var(--alert)"><span class="comp-val" id="bc-fat">--</span></div>
+<div class="comp-lbl">Body Fat</div>
+</div>
+<div class="comp-item">
+<div class="comp-ring" style="border:3px solid var(--green2)"><span class="comp-val" id="bc-muscle">--</span></div>
+<div class="comp-lbl">Muscle</div>
+</div>
+<div class="comp-item">
+<div class="comp-ring" style="border:3px solid var(--water)"><span class="comp-val" id="bc-bmi">--</span></div>
+<div class="comp-lbl">BMI</div>
+</div>
+</div>
+</div>
+<div class="chart-card col-4" id="card-recovery-score" onclick="expandChart('readiness')">
+<div class="card-header"><span class="card-title">Readiness Score</span></div>
+<div class="readiness-wrap">
+<div class="readiness-score high" id="readiness-big">--</div>
+<div class="gauge-label">Readiness / 100</div>
+<div style="margin-top:10px;font-size:0.61rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">Sleep · HRV · SpO2 · Stress</div>
+</div>
+<canvas id="chart-readiness" style="max-height:78px;margin-top:6px"></canvas>
+</div>
+</div>
 </div>
 
-<!-- ═══════ PERFORMANCE ═══════ -->
+<!-- PERFORMANCE -->
+
 <div class="view-panel" id="view-performance">
-  <div class="chart-grid">
-
-    <div class="chart-card col-6" onclick="expandChart('radar')">
-      <div class="card-header"><span class="card-title">Performance Radar</span></div>
-      <canvas id="chart-radar"></canvas>
-    </div>
-
-    <div class="chart-card col-6" onclick="expandChart('weekly-activity')">
-      <div class="card-header"><span class="card-title">Weekly Activity Summary</span></div>
-      <canvas id="chart-weekly"></canvas>
-    </div>
-
-    <div class="chart-card col-12" onclick="expandChart('active-trend')">
-      <div class="card-header"><span class="card-title">Active Minutes — Daily</span></div>
-      <canvas id="chart-active-trend"></canvas>
-    </div>
-
-  </div>
+<div class="chart-grid">
+<div class="chart-card col-6" onclick="expandChart('radar')">
+<div class="card-header"><span class="card-title">Performance Radar</span></div>
+<canvas id="chart-radar"></canvas>
+</div>
+<div class="chart-card col-6" onclick="expandChart('weekly-activity')">
+<div class="card-header"><span class="card-title">Weekly Activity Summary</span></div>
+<canvas id="chart-weekly"></canvas>
+</div>
+<div class="chart-card col-12" onclick="expandChart('active-trend')">
+<div class="card-header"><span class="card-title">Active Minutes — Daily</span></div>
+<canvas id="chart-active-trend"></canvas>
+</div>
+</div>
 </div>
 
-<!-- ═══════ WEEKLY AVERAGES ═══════ -->
+<!-- WEEKLY AVERAGES -->
+
 <div class="view-panel" id="view-weekly">
-  <div id="weekly-content"></div>
+<div id="weekly-content"></div>
 </div>
 
 </main>
 
 <script>
 // =====================================================================
-// ROLE & ACCESS CONFIG
+// ROLES & ACCESS
 // =====================================================================
 const ROLES = {
-  athlete: {
-    label:'Full biometric access — all 15 metrics',
-    visible:['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness']
-  },
-  doctor: {
-    label:'Clinical view — all 15 metrics + alerts',
-    visible:['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness']
-  },
-  trainer: {
-    label:'Training view — 10 metrics',
-    visible:['hr','energy','steps','calories','spo2','stress','active','bp','sleep','body','readiness','hrv']
-  },
-  coach: {
-    label:'Performance view — 5 metrics',
-    visible:['hr','energy','steps','calories','active','readiness']
-  }
+athlete: { visible:['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness'] },
+doctor: { visible:['hr','energy','steps','calories','spo2','stress','active','ecg','bp','hrv','antioxidant','sleep','apnea','menstrual','body','readiness'] },
+trainer: { visible:['hr','energy','steps','calories','spo2','stress','active','bp','sleep','body','readiness','hrv'] },
+coach: { visible:['hr','energy','steps','calories','active','readiness'] }
 };
 
 const CARD_ROLE_MAP = {
-  'card-ecg':            ['athlete','doctor'],
-  'card-antioxidant':    ['athlete','doctor'],
-  'card-menstrual':      ['athlete','doctor'],
-  'card-body':           ['athlete','doctor','trainer'],
-  'card-apnea':          ['athlete','doctor','trainer'],
-  'card-bp':             ['athlete','doctor','trainer'],
-  'card-hrv':            ['athlete','doctor','trainer'],
-  'card-spo2':           ['athlete','doctor','trainer'],
-  'card-stress':         ['athlete','doctor','trainer'],
-  'card-energy':         ['athlete','doctor','trainer','coach'],
-  'card-sleep':          ['athlete','doctor','trainer'],
-  'card-recovery-score': ['athlete','doctor','trainer','coach'],
+'card-ecg': ['athlete','doctor'],
+'card-antioxidant': ['athlete','doctor'],
+'card-menstrual': ['athlete','doctor'],
+'card-body': ['athlete','doctor','trainer'],
+'card-apnea': ['athlete','doctor','trainer'],
+'card-bp': ['athlete','doctor','trainer'],
+'card-hrv': ['athlete','doctor','trainer'],
+'card-spo2': ['athlete','doctor','trainer'],
+'card-stress': ['athlete','doctor','trainer'],
+'card-energy': ['athlete','doctor','trainer','coach'],
+'card-sleep': ['athlete','doctor','trainer'],
+'card-recovery-score': ['athlete','doctor','trainer','coach'],
 };
 
-// Which weekly stat sections each role can see
-const WEEKLY_ROLE_MAP = {
-  steps:       ['athlete','doctor','trainer','coach'],
-  calories:    ['athlete','doctor','trainer','coach'],
-  active:      ['athlete','doctor','trainer','coach'],
-  hr:          ['athlete','doctor','trainer','coach'],
-  energy:      ['athlete','doctor','trainer','coach'],
-  readiness:   ['athlete','doctor','trainer','coach'],
-  spo2:        ['athlete','doctor','trainer'],
-  stress:      ['athlete','doctor','trainer'],
-  bp:          ['athlete','doctor','trainer'],
-  sleep:       ['athlete','doctor','trainer'],
-  apnea:       ['athlete','doctor','trainer'],
-  body:        ['athlete','doctor','trainer'],
-  hrv:         ['athlete','doctor','trainer'],
-  ecg:         ['athlete','doctor'],
-  antioxidant: ['athlete','doctor'],
-  menstrual:   ['athlete','doctor'],
+const KPI_NAV = {
+hr:'vitals', spo2:'vitals', bp:'vitals',
+energy:'recovery', readiness:'recovery', stress:'recovery',
+steps:'performance', calories:'performance', active:'performance',
 };
 
-let currentRole       = 'athlete';
+// Nature colour palette for charts
+const NC = {
+green: 'rgb(61,140,88)',
+green2: 'rgb(90,170,114)',
+green3: 'rgb(132,200,152)',
+moss: 'rgb(46,102,64)',
+water: 'rgb(74,136,120)',
+water2: 'rgb(106,184,168)',
+stone: 'rgb(122,152,128)',
+amber: 'rgb(184,140,48)',
+amber2: 'rgb(212,170,80)',
+alert: 'rgb(176,48,40)',
+bark: 'rgb(92,120,80)',
+lichen: 'rgb(168,200,160)',
+};
+
+let currentRole = 'athlete';
 let currentAthleteIdx = 0;
-let currentDayKey     = '';
-let charts            = {};
-let alertsDismissed   = false;
-let modalChart        = null;
+let currentDayKey = '';
+let charts = {};
+let alertsDismissed = false;
+let modalChart = null;
+const chartConfigs = {};
 
 // =====================================================================
-// CHART HELPERS
+// CHART DEFAULTS
 // =====================================================================
 const CD = {
-  responsive:true, maintainAspectRatio:true,
-  plugins:{
-    legend:{display:false},
-    tooltip:{
-      backgroundColor:'rgba(8,12,20,0.9)',
-      borderColor:'rgba(0,212,255,0.3)', borderWidth:1,
-      titleColor:'#c8d8f0', bodyColor:'#00d4ff',
-      titleFont:{family:"'JetBrains Mono',monospace",size:11},
-      bodyFont: {family:"'Rajdhani',sans-serif",size:13}
-    }
-  },
-  scales:{
-    x:{grid:{color:'rgba(30,48,72,0.5)'},ticks:{color:'#4a6a8a',font:{family:"'JetBrains Mono',monospace",size:10}}},
-    y:{grid:{color:'rgba(30,48,72,0.5)'},ticks:{color:'#4a6a8a',font:{family:"'JetBrains Mono',monospace",size:10}}}
-  },
-  animation:{duration:600,easing:'easeInOutQuart'}
+responsive:true, maintainAspectRatio:true,
+plugins:{
+legend:{display:false},
+tooltip:{
+backgroundColor:'rgba(6,13,9,0.96)',
+borderColor:'rgba(61,140,88,0.3)', borderWidth:1,
+titleColor:'#c8dcc0', bodyColor:'#5aaa72',
+padding:10,
+titleFont:{family:"'JetBrains Mono',monospace",size:11},
+bodyFont: {family:"'Crimson Pro',serif",size:14}
+}
+},
+scales:{
+x:{grid:{color:'rgba(28,51,36,0.6)'},ticks:{color:'#3e6048',font:{family:"'JetBrains Mono',monospace",size:10}}},
+y:{grid:{color:'rgba(28,51,36,0.6)'},ticks:{color:'#3e6048',font:{family:"'JetBrains Mono',monospace",size:10}}}
+},
+animation:{duration:700,easing:'easeInOutQuart'}
 };
 
+const multiLegOpts = () => ({
+plugins:{...CD.plugins,legend:{display:true,labels:{color:'#94b898',font:{family:"'Crimson Pro',serif",size:13}}}}
+});
+
 function lineds(label, data, color, fill=true) {
-  return {
-    label, data, borderColor:color,
-    backgroundColor: fill ? color.replace('rgb(','rgba(').replace(')',',0.08)') : 'transparent',
-    borderWidth:2, pointRadius:3, pointHoverRadius:6,
-    pointBackgroundColor:color, tension:0.4, fill
-  };
+return {
+label, data, borderColor:color,
+backgroundColor: fill ? color.replace('rgb(','rgba(').replace(')',',0.1)') : 'transparent',
+borderWidth:2, pointRadius:3, pointHoverRadius:6,
+pointBackgroundColor:color, tension:0.4, fill
+};
 }
 
 function mkChart(id, type, labels, datasets, opts={}) {
-  const ctx = document.getElementById(id);
-  if (!ctx) return null;
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(ctx, {type, data:{labels,datasets}, options:{...CD,...opts}});
-  return charts[id];
+const ctx = document.getElementById(id);
+if (!ctx) return null;
+if (charts[id]) charts[id].destroy();
+charts[id] = new Chart(ctx, {type, data:{labels,datasets}, options:{...CD,...opts}});
+return charts[id];
 }
-
-// =====================================================================
-// WEEKLY DATA CALCULATOR
-// =====================================================================
-function calcWeeklyAverages(athlete) {
-  const days = Object.values(athlete.days);
-  if (!days.length) return null;
-  const n = days.length;
-
-  function avg(fn)  { return Math.round(days.reduce((s,d)=>s+fn(d.summary),0)/n*10)/10; }
-  function hi(fn)   { return Math.max(...days.map(d=>fn(d.summary))); }
-  function lo(fn)   { return Math.min(...days.map(d=>fn(d.summary))); }
-  function avgArr(fn){ return days.map(d=>fn(d.summary)); }
-
-  const dayLabels = Object.keys(athlete.days).sort().map(k => {
-    const date = new Date(k+'T12:00:00');
-    return date.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
-  });
-
-  return {
-    dayLabels,
-    steps:       { avg:avg(s=>s.steps),        hi:hi(s=>s.steps),        lo:lo(s=>s.steps),        arr:avgArr(s=>s.steps),        unit:'steps', label:'Steps' },
-    calories:    { avg:avg(s=>s.calories),      hi:hi(s=>s.calories),     lo:lo(s=>s.calories),     arr:avgArr(s=>s.calories),     unit:'kcal',  label:'Calories' },
-    active:      { avg:avg(s=>s.active_minutes),hi:hi(s=>s.active_minutes),lo:lo(s=>s.active_minutes),arr:avgArr(s=>s.active_minutes),unit:'min', label:'Active Minutes' },
-    hr:          { avg:avg(s=>s.heart_rate),    hi:hi(s=>s.heart_rate),   lo:lo(s=>s.heart_rate),   arr:avgArr(s=>s.heart_rate),   unit:'bpm',   label:'Heart Rate' },
-    spo2:        { avg:avg(s=>s.spo2),          hi:hi(s=>s.spo2),         lo:lo(s=>s.spo2),         arr:avgArr(s=>s.spo2),         unit:'%',     label:'SpO2' },
-    stress:      { avg:avg(s=>s.stress),        hi:hi(s=>s.stress),       lo:lo(s=>s.stress),       arr:avgArr(s=>s.stress),       unit:'',      label:'Stress Level' },
-    sbp:         { avg:avg(s=>s.sbp),           hi:hi(s=>s.sbp),          lo:lo(s=>s.sbp),          arr:avgArr(s=>s.sbp),          unit:'mmHg',  label:'Systolic BP' },
-    dbp:         { avg:avg(s=>s.dbp),           hi:hi(s=>s.dbp),          lo:lo(s=>s.dbp),          arr:avgArr(s=>s.dbp),          unit:'mmHg',  label:'Diastolic BP' },
-    energy:      { avg:avg(s=>s.energy),        hi:hi(s=>s.energy),       lo:lo(s=>s.energy),       arr:avgArr(s=>s.energy),       unit:'',      label:'Energy Score' },
-    antioxidant: { avg:avg(s=>s.antioxidant),   hi:hi(s=>s.antioxidant),  lo:lo(s=>s.antioxidant),  arr:avgArr(s=>s.antioxidant),  unit:'',      label:'Antioxidant Index' },
-    body_fat:    { avg:avg(s=>s.body_fat),      hi:hi(s=>s.body_fat),     lo:lo(s=>s.body_fat),     arr:avgArr(s=>s.body_fat),     unit:'%',     label:'Body Fat' },
-    muscle_kg:   { avg:avg(s=>s.muscle_kg),     hi:hi(s=>s.muscle_kg),    lo:lo(s=>s.muscle_kg),    arr:avgArr(s=>s.muscle_kg),    unit:'kg',    label:'Muscle Mass' },
-    bmi:         { avg:avg(s=>s.bmi),           hi:hi(s=>s.bmi),          lo:lo(s=>s.bmi),          arr:avgArr(s=>s.bmi),          unit:'',      label:'BMI' },
-    sleep_deep:  { avg:avg(s=>s.sleep_deep),    hi:hi(s=>s.sleep_deep),   lo:lo(s=>s.sleep_deep),   arr:avgArr(s=>s.sleep_deep),   unit:'hrs',   label:'Deep Sleep' },
-    sleep_light: { avg:avg(s=>s.sleep_light),   hi:hi(s=>s.sleep_light),  lo:lo(s=>s.sleep_light),  arr:avgArr(s=>s.sleep_light),  unit:'hrs',   label:'Light Sleep' },
-    sleep_rem:   { avg:avg(s=>s.sleep_rem),     hi:hi(s=>s.sleep_rem),    lo:lo(s=>s.sleep_rem),    arr:avgArr(s=>s.sleep_rem),    unit:'hrs',   label:'REM Sleep' },
-    apnea:       { avg:avg(s=>s.apnea_events),  hi:hi(s=>s.apnea_events), lo:lo(s=>s.apnea_events), arr:avgArr(s=>s.apnea_events), unit:'events',label:'Apnea Events' },
-    readiness:   { avg:avg(s=>s.readiness),     hi:hi(s=>s.readiness),    lo:lo(s=>s.readiness),    arr:avgArr(s=>s.readiness),    unit:'',      label:'Readiness Score' },
-  };
-}
-
-// =====================================================================
-// WEEKLY AVERAGES RENDERER
-// =====================================================================
-function renderWeekly() {
-  const athlete = BIOMON_DATA.athletes[currentAthleteIdx];
-  const W       = calcWeeklyAverages(athlete);
-  const L       = W.dayLabels;
-  const vis     = ROLES[currentRole].visible;
-  const wrap    = document.getElementById('weekly-content');
-  wrap.innerHTML = '';
-
-  function statCard(key, stat, color, chartId) {
-    return `
-      <div class="weekly-stat-card" style="--card-color:${color}" onclick="expandWeeklyChart('${chartId}','${stat.label}','${color}')">
-        <div class="weekly-stat-label">${stat.label} — 7-Day Avg</div>
-        <div class="weekly-stat-value">${stat.avg}<span class="weekly-stat-unit">${stat.unit}</span></div>
-        <div class="weekly-stat-sub">
-          <span>Hi: <span class="hi">${stat.hi}${stat.unit}</span></span>
-          <span>Lo: <span class="lo">${stat.lo}${stat.unit}</span></span>
-        </div>
-      </div>`;
-  }
-
-  // ── SECTION: Activity ──────────────────────────────────────────────
-  if (['steps','calories','active'].some(k => vis.includes(k))) {
-    wrap.innerHTML += `<div class="weekly-section-title">Activity</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid" id="wsg-activity">`;
-    if (vis.includes('steps'))    wrap.innerHTML += statCard('steps',   W.steps,   '#00d4ff', 'w-steps');
-    if (vis.includes('calories')) wrap.innerHTML += statCard('calories',W.calories,'#ffd60a', 'w-calories');
-    if (vis.includes('active'))   wrap.innerHTML += statCard('active',  W.active,  '#00ff9d', 'w-active');
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    if (vis.includes('steps')) {
-      wrap.innerHTML += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-steps','Steps','#00d4ff')"><div class="card-header"><span class="card-title">Steps — Daily</span></div><canvas id="chart-w-steps"></canvas></div>`;
-    }
-    if (vis.includes('calories')) {
-      wrap.innerHTML += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-calories','Calories','#ffd60a')"><div class="card-header"><span class="card-title">Calories — Daily</span></div><canvas id="chart-w-calories"></canvas></div>`;
-    }
-    if (vis.includes('active')) {
-      wrap.innerHTML += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-active','Active Minutes','#00ff9d')"><div class="card-header"><span class="card-title">Active Minutes — Daily</span></div><canvas id="chart-w-active"></canvas></div>`;
-    }
-    wrap.innerHTML += `</div>`;
-  }
-
-  // ── SECTION: Cardiovascular ────────────────────────────────────────
-  if (['hr','spo2','bp'].some(k => vis.includes(k))) {
-    wrap.innerHTML += `<div class="weekly-section-title">Cardiovascular</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid">`;
-    if (vis.includes('hr'))  wrap.innerHTML += statCard('hr',  W.hr,  '#ff4d6d', 'w-hr');
-    if (vis.includes('spo2'))wrap.innerHTML += statCard('spo2',W.spo2,'#00d4ff', 'w-spo2');
-    if (vis.includes('bp')) {
-      wrap.innerHTML += `
-        <div class="weekly-stat-card" style="--card-color:#ff4d6d" onclick="expandWeeklyChart('w-bp','Blood Pressure','#ff4d6d')">
-          <div class="weekly-stat-label">Blood Pressure — 7-Day Avg</div>
-          <div class="weekly-stat-value">${W.sbp.avg}/${W.dbp.avg}<span class="weekly-stat-unit">mmHg</span></div>
-          <div class="weekly-stat-sub">
-            <span>Sys Hi: <span class="hi">${W.sbp.hi}</span></span>
-            <span>Dia Lo: <span class="lo">${W.dbp.lo}</span></span>
-          </div>
-        </div>`;
-    }
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    if (vis.includes('hr')) {
-      wrap.innerHTML += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-hr','Heart Rate','#ff4d6d')"><div class="card-header"><span class="card-title">Heart Rate — Daily Avg</span></div><canvas id="chart-w-hr"></canvas></div>`;
-    }
-    if (vis.includes('spo2')) {
-      wrap.innerHTML += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-spo2','SpO2','#00d4ff')"><div class="card-header"><span class="card-title">Blood Oxygen SpO2 — Daily</span></div><canvas id="chart-w-spo2"></canvas></div>`;
-    }
-    if (vis.includes('bp')) {
-      wrap.innerHTML += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-bp','Blood Pressure','#ff4d6d')"><div class="card-header"><span class="card-title">Blood Pressure — Daily</span></div><canvas id="chart-w-bp"></canvas></div>`;
-    }
-    wrap.innerHTML += `</div>`;
-  }
-
-  // ── SECTION: Wellbeing ─────────────────────────────────────────────
-  if (['energy','stress','readiness'].some(k => vis.includes(k))) {
-    wrap.innerHTML += `<div class="weekly-section-title">Wellbeing</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid">`;
-    if (vis.includes('energy'))   wrap.innerHTML += statCard('energy',   W.energy,   '#ffd60a', 'w-energy');
-    if (vis.includes('stress'))   wrap.innerHTML += statCard('stress',   W.stress,   '#bf5af2', 'w-stress');
-    if (vis.includes('readiness'))wrap.innerHTML += statCard('readiness',W.readiness,'#00ff9d', 'w-readiness');
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    if (vis.includes('energy')) {
-      wrap.innerHTML += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-energy','Energy Score','#ffd60a')"><div class="card-header"><span class="card-title">Energy Score — Daily</span></div><canvas id="chart-w-energy"></canvas></div>`;
-    }
-    if (vis.includes('stress')) {
-      wrap.innerHTML += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-stress','Stress Level','#bf5af2')"><div class="card-header"><span class="card-title">Stress Level — Daily</span></div><canvas id="chart-w-stress"></canvas></div>`;
-    }
-    if (vis.includes('readiness')) {
-      wrap.innerHTML += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-readiness','Readiness','#00ff9d')"><div class="card-header"><span class="card-title">Readiness Score — Daily</span></div><canvas id="chart-w-readiness"></canvas></div>`;
-    }
-    wrap.innerHTML += `</div>`;
-  }
-
-  // ── SECTION: Sleep ─────────────────────────────────────────────────
-  if (vis.includes('sleep') || vis.includes('apnea')) {
-    wrap.innerHTML += `<div class="weekly-section-title">Sleep</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid">`;
-    if (vis.includes('sleep')) {
-      wrap.innerHTML += statCard('sleep_deep', W.sleep_deep, '#bf5af2','w-sleep-deep');
-      wrap.innerHTML += statCard('sleep_light',W.sleep_light,'#00d4ff','w-sleep-light');
-      wrap.innerHTML += statCard('sleep_rem',  W.sleep_rem,  '#00ff9d','w-sleep-rem');
-    }
-    if (vis.includes('apnea')) wrap.innerHTML += statCard('apnea',W.apnea,'#ff4d6d','w-apnea');
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    if (vis.includes('sleep')) {
-      wrap.innerHTML += `<div class="chart-card col-8" onclick="expandWeeklyChart('w-sleep','Sleep Stages','#bf5af2')"><div class="card-header"><span class="card-title">Sleep Stages — Daily</span></div><canvas id="chart-w-sleep"></canvas></div>`;
-    }
-    if (vis.includes('apnea')) {
-      wrap.innerHTML += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-apnea','Apnea Events','#ff4d6d')"><div class="card-header"><span class="card-title">Apnea Events — Daily</span></div><canvas id="chart-w-apnea"></canvas></div>`;
-    }
-    wrap.innerHTML += `</div>`;
-  }
-
-  // ── SECTION: Body Composition ──────────────────────────────────────
-  if (vis.includes('body')) {
-    wrap.innerHTML += `<div class="weekly-section-title">Body Composition</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid">`;
-    wrap.innerHTML += statCard('body_fat', W.body_fat, '#ff4d6d','w-bodyfat');
-    wrap.innerHTML += statCard('muscle_kg',W.muscle_kg,'#00ff9d','w-muscle');
-    wrap.innerHTML += statCard('bmi',      W.bmi,      '#00d4ff','w-bmi');
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    wrap.innerHTML += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-body','Body Composition','#00d4ff')"><div class="card-header"><span class="card-title">Body Composition — Daily Trend</span></div><canvas id="chart-w-body"></canvas></div>`;
-    wrap.innerHTML += `</div>`;
-  }
-
-  // ── SECTION: Antioxidant ───────────────────────────────────────────
-  if (vis.includes('antioxidant')) {
-    wrap.innerHTML += `<div class="weekly-section-title">Antioxidant Index</div>`;
-    wrap.innerHTML += `<div class="weekly-stat-grid">`;
-    wrap.innerHTML += statCard('antioxidant',W.antioxidant,'#ffd60a','w-antioxidant');
-    wrap.innerHTML += `</div>`;
-    wrap.innerHTML += `<div class="chart-grid" style="margin-bottom:20px">`;
-    wrap.innerHTML += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-antioxidant','Antioxidant Index','#ffd60a')"><div class="card-header"><span class="card-title">Antioxidant Index — Daily</span></div><canvas id="chart-w-antioxidant"></canvas></div>`;
-    wrap.innerHTML += `</div>`;
-  }
-
-  // Now draw all the weekly charts
-  setTimeout(() => drawWeeklyCharts(W, L, vis), 50);
-}
-
-function drawWeeklyCharts(W, L, vis) {
-  if (vis.includes('steps'))
-    mkChart('chart-w-steps','bar',L,[{label:'Steps',data:W.steps.arr,backgroundColor:'rgba(0,212,255,0.6)',borderColor:'#00d4ff',borderWidth:1,borderRadius:3}]);
-  if (vis.includes('calories'))
-    mkChart('chart-w-calories','bar',L,[{label:'Calories',data:W.calories.arr,backgroundColor:'rgba(255,214,10,0.5)',borderColor:'#ffd60a',borderWidth:1,borderRadius:3}]);
-  if (vis.includes('active')) {
-    mkChart('chart-w-active','line',L,[
-      lineds('Active Min',W.active.arr,'rgb(0,255,157)'),
-      {label:'Goal',data:L.map(()=>60),borderColor:'rgba(255,255,255,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}
-    ],{plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}});
-  }
-  if (vis.includes('hr'))
-    mkChart('chart-w-hr','line',L,[lineds('HR',W.hr.arr,'rgb(255,77,109)')]);
-  if (vis.includes('spo2'))
-    mkChart('chart-w-spo2','line',L,[lineds('SpO2',W.spo2.arr,'rgb(0,212,255)')],{scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}});
-  if (vis.includes('bp'))
-    mkChart('chart-w-bp','line',L,[
-      lineds('Systolic', W.sbp.arr,'rgb(255,77,109)',false),
-      lineds('Diastolic',W.dbp.arr,'rgb(0,212,255)', false)
-    ],{plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}});
-  if (vis.includes('energy'))
-    mkChart('chart-w-energy','line',L,[lineds('Energy',W.energy.arr,'rgb(255,214,10)')]);
-  if (vis.includes('stress'))
-    mkChart('chart-w-stress','line',L,[lineds('Stress',W.stress.arr,'rgb(191,90,242)')]);
-  if (vis.includes('readiness'))
-    mkChart('chart-w-readiness','line',L,[lineds('Readiness',W.readiness.arr,'rgb(0,255,157)')],{scales:{y:{min:0,max:100,...CD.scales.y},x:CD.scales.x}});
-  if (vis.includes('sleep')) {
-    mkChart('chart-w-sleep','bar',L,[
-      {label:'Deep', data:W.sleep_deep.arr, backgroundColor:'rgba(191,90,242,0.7)',borderRadius:3},
-      {label:'Light',data:W.sleep_light.arr,backgroundColor:'rgba(0,212,255,0.5)',  borderRadius:3},
-      {label:'REM',  data:W.sleep_rem.arr,  backgroundColor:'rgba(0,255,157,0.6)',  borderRadius:3},
-    ],{plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}},scales:{x:CD.scales.x,y:{stacked:false,...CD.scales.y}}});
-  }
-  if (vis.includes('apnea'))
-    mkChart('chart-w-apnea','bar',L,[{data:W.apnea.arr,backgroundColor:W.apnea.arr.map(v=>v>10?'rgba(255,77,109,0.7)':v>4?'rgba(255,214,10,0.6)':'rgba(0,255,157,0.6)'),borderRadius:3}]);
-  if (vis.includes('body'))
-    mkChart('chart-w-body','line',L,[
-      lineds('Body Fat %',  W.body_fat.arr,  'rgb(255,77,109)', false),
-      lineds('Muscle (kg)', W.muscle_kg.arr, 'rgb(0,255,157)',  false),
-      lineds('BMI',         W.bmi.arr,       'rgb(0,212,255)',  false),
-    ],{plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}});
-  if (vis.includes('antioxidant'))
-    mkChart('chart-w-antioxidant','line',L,[lineds('Antioxidant',W.antioxidant.arr,'rgb(255,214,10)')]);
-}
-
-// =====================================================================
-// EXPAND CHART MODAL
-// =====================================================================
-// Stores chart configs for re-rendering in the modal
-const chartConfigs = {};
 
 function registerChart(key, type, labels, datasets, opts, title) {
-  chartConfigs[key] = { type, labels, datasets, opts, title };
+chartConfigs[key] = {type, labels, datasets, opts, title};
 }
-
-function expandChart(key) {
-  const cfg = chartConfigs[key];
-  if (!cfg) return;
-  openModal(cfg.title, cfg.type, cfg.labels, cfg.datasets, cfg.opts);
-}
-
-function expandWeeklyChart(key, title, color) {
-  const cfg = chartConfigs[key];
-  if (cfg) { openModal(cfg.title || title, cfg.type, cfg.labels, cfg.datasets, cfg.opts); return; }
-  // fallback: find from weekly data
-  const athlete = BIOMON_DATA.athletes[currentAthleteIdx];
-  const W = calcWeeklyAverages(athlete);
-  const L = W.dayLabels;
-  const vis = ROLES[currentRole].visible;
-  let type = 'line', labels = L, datasets = [], opts = {};
-
-  const colorRgb = color.replace('#','');
-  const r = parseInt(colorRgb.substring(0,2),16);
-  const g = parseInt(colorRgb.substring(2,4),16);
-  const b = parseInt(colorRgb.substring(4,6),16);
-  const rgb = `rgb(${r},${g},${b})`;
-
-  if      (key==='w-steps')      { type='bar'; datasets=[{label:'Steps',data:W.steps.arr,backgroundColor:`rgba(${r},${g},${b},0.6)`,borderColor:color,borderWidth:1,borderRadius:3}]; }
-  else if (key==='w-calories')   { type='bar'; datasets=[{label:'Calories',data:W.calories.arr,backgroundColor:`rgba(${r},${g},${b},0.5)`,borderColor:color,borderWidth:1,borderRadius:3}]; }
-  else if (key==='w-active')     { datasets=[lineds('Active Min',W.active.arr,rgb),{label:'Goal',data:L.map(()=>60),borderColor:'rgba(255,255,255,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}]; opts={plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0'}}}}; }
-  else if (key==='w-hr')         { datasets=[lineds('HR',W.hr.arr,rgb)]; }
-  else if (key==='w-spo2')       { datasets=[lineds('SpO2',W.spo2.arr,rgb)]; opts={scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}}; }
-  else if (key==='w-bp')         { datasets=[lineds('Systolic',W.sbp.arr,'rgb(255,77,109)',false),lineds('Diastolic',W.dbp.arr,'rgb(0,212,255)',false)]; opts={plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0'}}}}; }
-  else if (key==='w-energy')     { datasets=[lineds('Energy',W.energy.arr,rgb)]; }
-  else if (key==='w-stress')     { datasets=[lineds('Stress',W.stress.arr,rgb)]; }
-  else if (key==='w-readiness')  { datasets=[lineds('Readiness',W.readiness.arr,rgb)]; opts={scales:{y:{min:0,max:100,...CD.scales.y},x:CD.scales.x}}; }
-  else if (key==='w-sleep')      { type='bar'; datasets=[{label:'Deep',data:W.sleep_deep.arr,backgroundColor:'rgba(191,90,242,0.7)',borderRadius:3},{label:'Light',data:W.sleep_light.arr,backgroundColor:'rgba(0,212,255,0.5)',borderRadius:3},{label:'REM',data:W.sleep_rem.arr,backgroundColor:'rgba(0,255,157,0.6)',borderRadius:3}]; opts={plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0'}}}}; }
-  else if (key==='w-apnea')      { type='bar'; datasets=[{data:W.apnea.arr,backgroundColor:W.apnea.arr.map(v=>v>10?'rgba(255,77,109,0.7)':v>4?'rgba(255,214,10,0.6)':'rgba(0,255,157,0.6)'),borderRadius:3}]; }
-  else if (key==='w-body')       { datasets=[lineds('Body Fat%',W.body_fat.arr,'rgb(255,77,109)',false),lineds('Muscle kg',W.muscle_kg.arr,'rgb(0,255,157)',false),lineds('BMI',W.bmi.arr,'rgb(0,212,255)',false)]; opts={plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0'}}}}; }
-  else if (key==='w-antioxidant'){ datasets=[lineds('Antioxidant',W.antioxidant.arr,rgb)]; }
-  else if (key==='w-sleep-deep') { datasets=[lineds('Deep Sleep',W.sleep_deep.arr,rgb)]; }
-  else if (key==='w-sleep-light'){ datasets=[lineds('Light Sleep',W.sleep_light.arr,rgb)]; }
-  else if (key==='w-sleep-rem')  { datasets=[lineds('REM Sleep',W.sleep_rem.arr,rgb)]; }
-  else if (key==='w-bodyfat')    { datasets=[lineds('Body Fat%',W.body_fat.arr,rgb,false)]; }
-  else if (key==='w-muscle')     { datasets=[lineds('Muscle kg',W.muscle_kg.arr,rgb,false)]; }
-  else if (key==='w-bmi')        { datasets=[lineds('BMI',W.bmi.arr,rgb,false)]; }
-
-  openModal(title, type, labels, datasets, opts);
-}
-
-function openModal(title, type, labels, datasets, opts={}) {
-  document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-stats').innerHTML = '';
-  const backdrop = document.getElementById('modal-backdrop');
-  backdrop.classList.add('open');
-
-  const wrap = document.getElementById('modal-canvas-wrap');
-  wrap.innerHTML = '<canvas id="modal-canvas"></canvas>';
-
-  if (modalChart) { modalChart.destroy(); modalChart = null; }
-
-  const modalOpts = {
-    ...CD,
-    ...opts,
-    maintainAspectRatio: false,
-    plugins: {
-      ...(opts.plugins || CD.plugins),
-      legend: { ...(opts.plugins?.legend || CD.plugins.legend) }
-    },
-    animation: { duration:400, easing:'easeInOutQuart' }
-  };
-
-  modalChart = new Chart(document.getElementById('modal-canvas'), {
-    type, data:{ labels, datasets },
-    options: modalOpts
-  });
-}
-
-function closeModal(e) {
-  if (e.target === document.getElementById('modal-backdrop')) closeModalBtn();
-}
-function closeModalBtn() {
-  document.getElementById('modal-backdrop').classList.remove('open');
-  if (modalChart) { modalChart.destroy(); modalChart = null; }
-}
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeModalBtn(); });
 
 // =====================================================================
-// ALERT ENGINE
+// CSV IMPORT
+// =====================================================================
+let csvImportedData = null; // session-only, never persisted
+
+function openCsvModal() {
+document.getElementById('csv-modal-backdrop').classList.add('open');
+document.getElementById('csv-feedback').className = 'csv-feedback';
+document.getElementById('csv-feedback').textContent = '';
+}
+
+function closeCsvModal(e) {
+if (e.target === document.getElementById('csv-modal-backdrop'))
+document.getElementById('csv-modal-backdrop').classList.remove('open');
+}
+
+function csvDragOver(e) {
+e.preventDefault();
+document.getElementById('csv-drop-zone').classList.add('dragover');
+}
+function csvDragLeave() {
+document.getElementById('csv-drop-zone').classList.remove('dragover');
+}
+function csvDrop(e) {
+e.preventDefault();
+document.getElementById('csv-drop-zone').classList.remove('dragover');
+const file = e.dataTransfer.files[0];
+if (file) processCsvFile(file);
+}
+
+function handleCsvFile(event) {
+const file = event.target.files[0];
+if (file) processCsvFile(file);
+event.target.value = '';
+}
+
+function processCsvFile(file) {
+if (!file.name.toLowerCase().endsWith('.csv')) {
+showCsvFeedback('error', 'Please select a valid .csv file.');
+return;
+}
+const reader = new FileReader();
+reader.onload = (e) => {
+try {
+const data = parseCsv(e.target.result);
+if (!data || !data.athletes || !data.athletes.length) {
+showCsvFeedback('error', 'Could not parse CSV. Check that required columns are present.');
+return;
+}
+csvImportedData = data;
+showCsvFeedback('success', `Loaded ${file.name} — ${data.athletes.length} athlete(s), ${countDays(data)} day(s) of data. Closes automatically...`);
+// Update UI indicators
+document.getElementById('csv-badge-name').textContent = file.name;
+document.getElementById('csv-badge').classList.add('visible');
+document.getElementById('csv-btn').classList.add('loaded');
+document.getElementById('csv-btn').innerHTML = `
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px">
+<path d="M2 8l4 4 8-8"/>
+</svg>
+CSV Active`;
+setTimeout(() => {
+document.getElementById('csv-modal-backdrop').classList.remove('open');
+loadDataSource(csvImportedData);
+}, 1800);
+} catch(err) {
+showCsvFeedback('error', 'Parse error: ' + err.message);
+}
+};
+reader.readAsText(file);
+}
+
+function showCsvFeedback(type, msg) {
+const el = document.getElementById('csv-feedback');
+el.className = 'csv-feedback ' + type;
+el.textContent = msg;
+}
+
+function countDays(data) {
+return data.athletes.reduce((s,a) => s + Object.keys(a.days).length, 0);
+}
+
+function clearCsvData() {
+csvImportedData = null;
+document.getElementById('csv-badge').classList.remove('visible');
+document.getElementById('csv-btn').classList.remove('loaded');
+document.getElementById('csv-btn').innerHTML = `
+<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px">
+<path d="M8 2v8M5 7l3 3 3-3M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/>
+</svg>
+Import CSV`;
+loadDataSource(BIOMON_DATA);
+}
+
+// ── CSV PARSER ──────────────────────────────────────────────────────
+function parseCsv(text) {
+const lines = text.trim().split(/\r?\n/);
+if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+
+// Parse header
+const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''));
+
+const required = ['athlete_name','athlete_number','date','heart_rate','spo2','steps','calories','active_minutes','energy','stress','readiness'];
+const missing = required.filter(r => !headers.includes(r));
+if (missing.length) throw new Error(`Missing required columns: ${missing.join(', ')}`);
+
+// Parse rows
+const rows = [];
+for (let i = 1; i < lines.length; i++) {
+if (!lines[i].trim()) continue;
+const vals = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g,''));
+const row = {};
+headers.forEach((h,idx) => { row[h] = vals[idx] || ''; });
+rows.push(row);
+}
+
+// Group by athlete
+const athleteMap = {};
+rows.forEach(row => {
+const key = row.athlete_name + '|' + row.athlete_number;
+if (!athleteMap[key]) {
+athleteMap[key] = {
+id: Object.keys(athleteMap).length + 1,
+name: row.athlete_name,
+number: parseInt(row.athlete_number) || 0,
+team: row.team || 'Imported',
+position: row.position || 'Athlete',
+age: parseInt(row.age) || 0,
+height_cm: parseFloat(row.height_cm) || 0,
+weight_kg: parseFloat(row.weight_kg) || 0,
+days: {},
+ecg: generateFlatEcg(),
+hr_zones: { labels:['Zone 1','Zone 2','Zone 3','Zone 4','Zone 5'], minutes:[30,45,25,15,5] }
+};
+}
+const a = athleteMap[key];
+const dateKey = row.date;
+
+// Build summary
+const n = v => parseFloat(v) || 0;
+const summary = {
+steps: n(row.steps),
+calories: n(row.calories),
+active_minutes: n(row.active_minutes),
+heart_rate: n(row.heart_rate),
+resting_hr: n(row.resting_hr) || Math.round(n(row.heart_rate)*0.7),
+spo2: n(row.spo2),
+stress: n(row.stress),
+sbp: n(row.sbp) || 120,
+dbp: n(row.dbp) || 80,
+energy: n(row.energy),
+antioxidant: n(row.antioxidant) || 50,
+body_fat: n(row.body_fat) || 18,
+muscle_kg: n(row.muscle_kg) || 60,
+bmi: n(row.bmi) || 22,
+sleep_deep: n(row.sleep_deep) || 1.5,
+sleep_light: n(row.sleep_light) || 3.0,
+sleep_rem: n(row.sleep_rem) || 1.8,
+apnea_events: n(row.apnea_events) || 0,
+menstrual_phase: row.menstrual_phase || 'N/A',
+cycle_day: parseInt(row.cycle_day) || 0,
+readiness: n(row.readiness),
+fall: row.fall === 'true' || row.fall === '1',
+};
+
+// Build synthetic timeline (15 pts) from daily summary
+const pts = 15;
+const lbl = Array.from({length:pts},(_,i) => `${String(i+6).padStart(2,'0')}:00`);
+const sineWave = (base, amp, phase=0) =>
+Array.from({length:pts},(_,i) => Math.round((base + amp*Math.sin(i/pts*Math.PI*2+phase))*10)/10);
+const rampUp = (base, peak) =>
+Array.from({length:pts},(_,i) => Math.round(base + (peak-base)*(i/(pts-1))));
+
+a.days[dateKey] = {
+summary,
+timeline:{
+labels: lbl,
+hrData: sineWave(summary.heart_rate, 12, -1),
+spo2Data: sineWave(summary.spo2, 1.2),
+stressData:sineWave(summary.stress, 15, 1),
+energyData:sineWave(summary.energy, 10, 2),
+sbpData: sineWave(summary.sbp, 6),
+dbpData: sineWave(summary.dbp, 4),
+antiData: sineWave(summary.antioxidant, 5),
+stepsData: rampUp(0, summary.steps),
+calData: rampUp(0, summary.calories),
+activeData:rampUp(0, summary.active_minutes),
+apneaData: Array.from({length:pts},() => summary.apnea_events>0 ? (Math.random()<0.3?1:0) : 0),
+readinessData: sineWave(summary.readiness, 8),
+}
+};
+});
+
+return { thresholds: BIOMON_DATA.thresholds, athletes: Object.values(athleteMap) };
+}
+
+function generateFlatEcg() {
+// Minimal synthetic ECG waveform
+const ecg = [];
+for (let i = 0; i < 200; i++) {
+const phase = (i % 50) / 50;
+if (phase < 0.1) ecg.push(Math.sin(phase*Math.PI/0.1)*0.2);
+else if (phase < 0.35) ecg.push(Math.sin((phase-0.1)*Math.PI/0.25)*0.9);
+else if (phase < 0.5) ecg.push(-Math.sin((phase-0.35)*Math.PI/0.15)*0.25);
+else ecg.push(0);
+}
+return ecg;
+}
+
+// Active data source — either built-in or CSV
+function loadDataSource(data) {
+currentAthleteIdx = 0;
+alertsDismissed = false;
+const athlete = data.athletes[0];
+const days = Object.keys(athlete.days).sort();
+currentDayKey = days[days.length-1];
+buildAthleteBtns(data);
+buildDayBtns(athlete);
+renderAthleteInfo(athlete);
+renderAll(data);
+}
+
+function getActiveData() {
+return csvImportedData || BIOMON_DATA;
+}
+
+// =====================================================================
+// ALERTS
 // =====================================================================
 function checkAlerts(S) {
-  if (alertsDismissed) return [];
-  const T = BIOMON_DATA.thresholds;
-  const a = [];
-  if (S.heart_rate > T.hr_high)       a.push({level:'critical',metric:'HEART RATE',   msg:`${S.heart_rate} bpm — above threshold of ${T.hr_high} bpm`,    kpi:'hr'});
-  if (S.heart_rate < T.hr_low)        a.push({level:'critical',metric:'HEART RATE',   msg:`${S.heart_rate} bpm — below minimum of ${T.hr_low} bpm`,          kpi:'hr'});
-  if (S.spo2 < T.spo2_low)           a.push({level:'critical',metric:'SPO2',          msg:`${S.spo2}% — below safe threshold of ${T.spo2_low}%`,             kpi:'spo2'});
-  if (S.sbp > T.sbp_high)            a.push({level:'critical',metric:'BLOOD PRESSURE',msg:`${S.sbp}/${S.dbp} mmHg — systolic above ${T.sbp_high}`,           kpi:'bp'});
-  if (S.dbp > T.dbp_high)            a.push({level:'critical',metric:'BLOOD PRESSURE',msg:`${S.sbp}/${S.dbp} mmHg — diastolic above ${T.dbp_high}`,          kpi:'bp'});
-  if (S.apnea_events > T.apnea_high) a.push({level:'critical',metric:'SLEEP APNEA',  msg:`${S.apnea_events} events — above threshold of ${T.apnea_high}`,   kpi:'apnea'});
-  if (S.stress > T.stress_high)      a.push({level:'warning', metric:'STRESS',        msg:`Level ${S.stress} — above threshold of ${T.stress_high}`,          kpi:'stress'});
-  if (S.energy < T.energy_low)       a.push({level:'warning', metric:'ENERGY',        msg:`Score ${S.energy} — below threshold of ${T.energy_low}`,           kpi:'energy'});
-  if (S.readiness < T.readiness_low) a.push({level:'warning', metric:'READINESS',     msg:`Score ${S.readiness} — below threshold of ${T.readiness_low}`,     kpi:'readiness'});
-  if (S.body_fat > T.body_fat_high)  a.push({level:'warning', metric:'BODY FAT',      msg:`${S.body_fat}% — above threshold of ${T.body_fat_high}%`,          kpi:'body'});
-  return a;
+if (alertsDismissed) return [];
+const T = BIOMON_DATA.thresholds; // always use built-in thresholds
+const a = [];
+if (S.heart_rate > T.hr_high) a.push({level:'critical',metric:'Heart Rate', msg:`${S.heart_rate} bpm — above ${T.hr_high} bpm`, kpi:'hr'});
+if (S.heart_rate < T.hr_low) a.push({level:'critical',metric:'Heart Rate', msg:`${S.heart_rate} bpm — below ${T.hr_low} bpm`, kpi:'hr'});
+if (S.spo2 < T.spo2_low) a.push({level:'critical',metric:'SpO2', msg:`${S.spo2}% — below ${T.spo2_low}%`, kpi:'spo2'});
+if (S.sbp > T.sbp_high) a.push({level:'critical',metric:'Blood Pressure',msg:`${S.sbp}/${S.dbp} mmHg — systolic high`, kpi:'bp'});
+if (S.dbp > T.dbp_high) a.push({level:'critical',metric:'Blood Pressure',msg:`${S.sbp}/${S.dbp} mmHg — diastolic high`, kpi:'bp'});
+if (S.apnea_events > T.apnea_high) a.push({level:'critical',metric:'Sleep Apnea', msg:`${S.apnea_events} events — above ${T.apnea_high}`, kpi:'apnea'});
+if (S.stress > T.stress_high) a.push({level:'warning', metric:'Stress', msg:`Level ${S.stress} — above ${T.stress_high}`, kpi:'stress'});
+if (S.energy < T.energy_low) a.push({level:'warning', metric:'Energy', msg:`Score ${S.energy} — below ${T.energy_low}`, kpi:'energy'});
+if (S.readiness < T.readiness_low) a.push({level:'warning', metric:'Readiness', msg:`Score ${S.readiness} — below ${T.readiness_low}`, kpi:'readiness'});
+if (S.body_fat > T.body_fat_high) a.push({level:'warning', metric:'Body Fat', msg:`${S.body_fat}% — above ${T.body_fat_high}%`, kpi:'body'});
+return a;
 }
 
 function renderAlerts(alerts) {
-  const banner = document.getElementById('alert-banner');
-  const list   = document.getElementById('alert-list');
-  list.innerHTML = '';
-  if (!alerts.length) { banner.classList.remove('has-alerts'); return; }
-  banner.classList.add('has-alerts');
-  alerts.forEach(a => {
-    list.innerHTML += `
-      <div class="alert-item ${a.level==='warning'?'warning':''}">
-        <span class="alert-icon">${a.level==='critical'?'🔴':'🟡'}</span>
-        <span class="alert-metric">${a.metric}</span>
-        <span>${a.msg}</span>
-      </div>`;
-  });
+const banner = document.getElementById('alert-banner');
+const list = document.getElementById('alert-list');
+list.innerHTML = '';
+if (!alerts.length) { banner.classList.remove('has-alerts'); return; }
+banner.classList.add('has-alerts');
+alerts.forEach(a => {
+list.innerHTML += `
+<div class="alert-item ${a.level==='warning'?'warning':''}">
+<span style="font-size:0.75rem">${a.level==='critical'?'&#9679;':'&#9650;'}</span>
+<span class="alert-metric">${a.metric}</span>
+<span>${a.msg}</span>
+</div>`;
+});
 }
 
 function dismissAlerts() {
-  alertsDismissed = true;
-  document.getElementById('alert-banner').classList.remove('has-alerts');
-  document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('alert-kpi','warn-kpi'));
+alertsDismissed = true;
+document.getElementById('alert-banner').classList.remove('has-alerts');
+document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('alert-kpi','warn-kpi'));
 }
 
 // =====================================================================
 // RESTRICTIONS
 // =====================================================================
 function applyRestrictions() {
-  Object.entries(CARD_ROLE_MAP).forEach(([id,roles]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const locked = !roles.includes(currentRole);
-    el.classList.toggle('restricted', locked);
-    let overlay = el.querySelector('.lock-overlay');
-    if (locked) {
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'lock-overlay';
-        overlay.innerHTML = `<div class="lock-icon">🔒</div><div class="lock-text">Access restricted for ${currentRole} role</div>`;
-        el.appendChild(overlay);
-      }
-    } else {
-      if (overlay) overlay.remove();
-    }
-  });
+Object.entries(CARD_ROLE_MAP).forEach(([id,roles]) => {
+const el = document.getElementById(id);
+if (!el) return;
+const locked = !roles.includes(currentRole);
+el.classList.toggle('restricted', locked);
+let overlay = el.querySelector('.lock-overlay');
+if (locked) {
+if (!overlay) {
+overlay = document.createElement('div');
+overlay.className = 'lock-overlay';
+overlay.innerHTML = `<div class="lock-icon">&#128274;</div><div class="lock-text">Restricted<br>for ${currentRole} role</div>`;
+el.appendChild(overlay);
+}
+} else {
+if (overlay) overlay.remove();
+}
+});
 }
 
 // =====================================================================
-// KPI ROW — with navigation to related view
+// KPI ROW
 // =====================================================================
-const KPI_NAV = {
-  hr:       { view:'vitals',      hint:'→ Vitals & Cardio' },
-  spo2:     { view:'vitals',      hint:'→ Vitals & Cardio' },
-  bp:       { view:'vitals',      hint:'→ Vitals & Cardio' },
-  energy:   { view:'recovery',    hint:'→ Recovery & Sleep' },
-  readiness:{ view:'recovery',    hint:'→ Recovery & Sleep' },
-  steps:    { view:'performance', hint:'→ Performance' },
-  calories: { view:'performance', hint:'→ Performance' },
-  active:   { view:'performance', hint:'→ Performance' },
-  stress:   { view:'recovery',    hint:'→ Recovery & Sleep' },
-};
-
 function buildKPIs(S, alerts) {
-  const vis      = ROLES[currentRole].visible;
-  const alertMap = {};
-  alerts.forEach(a => { alertMap[a.kpi] = a.level; });
+const vis = ROLES[currentRole].visible;
+const alertMap = {};
+alerts.forEach(a => { alertMap[a.kpi] = a.level; });
 
-  const kpis = [
-    { label:'Steps',         value:S.steps.toLocaleString(), unit:'',    sub:'Goal: 10,000',        color:'#00d4ff', key:'steps'    },
-    { label:'Calories',      value:S.calories.toLocaleString(),unit:'kcal',sub:'Burned today',      color:'#ffd60a', key:'calories' },
-    { label:'Active Min',    value:S.active_minutes, unit:'min', sub:'Target: 60 min',              color:'#00ff9d', key:'active'   },
-    { label:'Heart Rate',    value:S.heart_rate,     unit:'bpm', sub:`Resting: ${S.resting_hr}`,   color:'#ff4d6d', key:'hr'       },
-    { label:'SpO2',          value:S.spo2,           unit:'%',   sub:'Optimal >= 95%',              color:'#00d4ff', key:'spo2'     },
-    { label:'Stress',        value:S.stress,         unit:'',    sub:'0–100 scale',                 color:'#bf5af2', key:'stress'   },
-    { label:'Blood Pressure',value:`${S.sbp}/${S.dbp}`,unit:'mmHg',sub:'Systolic/Diastolic',       color:'#ff4d6d', key:'bp'       },
-    { label:'Energy Score',  value:S.energy,         unit:'',    sub:'/ 100',                       color:'#ffd60a', key:'energy'   },
-  ];
+const kpis = [
+{ label:'Steps', value:S.steps.toLocaleString(), unit:'', sub:'Goal: 10,000', color:NC.green, key:'steps' },
+{ label:'Calories', value:S.calories.toLocaleString(),unit:'kcal',sub:'Burned today', color:NC.water, key:'calories' },
+{ label:'Active Minutes', value:S.active_minutes,unit:'min',sub:'Target: 60 min', color:NC.green2, key:'active' },
+{ label:'Heart Rate', value:S.heart_rate, unit:'bpm',sub:`Resting: ${S.resting_hr}`, color:NC.moss, key:'hr' },
+{ label:'SpO2', value:S.spo2, unit:'%', sub:'Optimal \u2265 95%', color:NC.water2, key:'spo2' },
+{ label:'Stress', value:S.stress, unit:'', sub:'0\u2013100 scale', color:NC.stone, key:'stress' },
+{ label:'Blood Pressure', value:`${S.sbp}/${S.dbp}`,unit:'mmHg',sub:'Sys / Dia', color:NC.bark, key:'bp' },
+{ label:'Energy Score', value:S.energy, unit:'', sub:'/ 100', color:NC.green3, key:'energy' },
+];
 
-  const row = document.getElementById('kpi-row');
-  row.innerHTML = '';
-  kpis.filter(k => vis.includes(k.key)).forEach(k => {
-    const alertClass = alertMap[k.key]==='critical' ? 'alert-kpi' : alertMap[k.key]==='warning' ? 'warn-kpi' : '';
-    const nav        = KPI_NAV[k.key];
-    const navHtml    = nav ? `<div class="kpi-nav">${nav.hint}</div>` : '';
-    row.innerHTML += `
-      <div class="kpi ${alertClass}" style="--kpi-color:${k.color}" data-kpi="${k.key}"
-           onclick="kpiClick('${k.key}','${k.label}')">
-        <div class="kpi-alert-dot"></div>
-        <div class="kpi-label">${k.label}</div>
-        <div class="kpi-value">${k.value}<span class="kpi-unit">${k.unit}</span></div>
-        <div class="kpi-sub">${k.sub}</div>
-        ${navHtml}
-      </div>`;
-  });
+const row = document.getElementById('kpi-row');
+row.innerHTML = '';
+kpis.filter(k => vis.includes(k.key)).forEach(k => {
+const alertClass = alertMap[k.key]==='critical' ? 'alert-kpi' : alertMap[k.key]==='warning' ? 'warn-kpi' : '';
+const nav = KPI_NAV[k.key];
+const hint = nav ? `\u2192 ${nav.charAt(0).toUpperCase()+nav.slice(1)}` : '';
+row.innerHTML += `
+<div class="kpi ${alertClass}" style="--kpi-color:${k.color}" data-kpi="${k.key}"
+onclick="kpiClick('${k.key}')">
+<div class="kpi-alert-dot"></div>
+<div class="kpi-label">${k.label}</div>
+<div class="kpi-value">${k.value}<span class="kpi-unit">${k.unit}</span></div>
+<div class="kpi-sub">${k.sub}</div>
+${hint ? `<div class="kpi-nav">${hint}</div>` : ''}
+</div>`;
+});
 }
 
-// KPI click: navigate to relevant view and pop open chart
-function kpiClick(key, label) {
-  const nav = KPI_NAV[key];
-  if (nav) setView(nav.view);
-
-  // Try to expand the most relevant chart for this metric
-  const chartKey = {
-    hr:'hr', spo2:'spo2', bp:'bp', energy:'energy',
-    steps:'steps', calories:'calories', active:'active',
-    stress:'stress', readiness:'readiness'
-  }[key];
-  if (chartKey && chartConfigs[chartKey]) {
-    setTimeout(() => expandChart(chartKey), 200);
-  }
+function kpiClick(key) {
+const nav = KPI_NAV[key];
+if (nav) setView(nav);
+const map = {hr:'hr',spo2:'spo2',bp:'bp',energy:'energy',steps:'steps',calories:'calories',active:'active',stress:'stress',readiness:'readiness'};
+if (map[key] && chartConfigs[map[key]]) setTimeout(() => expandChart(map[key]), 200);
 }
 
 // =====================================================================
 // ATHLETE UI
 // =====================================================================
 function renderAthleteInfo(a) {
-  document.getElementById('athlete-info-card').innerHTML = `
-    <div>
-      <div class="athlete-info-name">${a.name} &nbsp;#${a.number}</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--accent5);margin-top:2px">${a.position} · ${a.team}</div>
-    </div>
-    <div class="athlete-info-detail">
-      <span>AGE <b>${a.age}</b></span>
-      <span>HT <b>${a.height_cm} cm</b></span>
-      <span>WT <b>${a.weight_kg} kg</b></span>
-    </div>`;
-  document.getElementById('athlete-label').innerHTML =
-    `ATHLETE: <span style="color:var(--accent5)">${a.name} #${a.number}</span>`;
+document.getElementById('athlete-info-card').innerHTML = `
+<div>
+<div class="athlete-info-name">${a.name} &nbsp;#${a.number}</div>
+<div class="athlete-info-sub">${a.position} &middot; ${a.team}</div>
+</div>
+<div class="athlete-info-detail">
+<span>Age&nbsp;<b>${a.age}</b></span>
+<span>Height&nbsp;<b>${a.height_cm} cm</b></span>
+<span>Weight&nbsp;<b>${a.weight_kg} kg</b></span>
+</div>`;
+document.getElementById('athlete-label').innerHTML = `Athlete: <span>${a.name} #${a.number}</span>`;
 }
 
-function buildAthleteBtns() {
-  const wrap = document.getElementById('athlete-btns');
-  wrap.style.display='flex'; wrap.style.gap='6px';
-  wrap.innerHTML='';
-  BIOMON_DATA.athletes.forEach((a,i) => {
-    const btn = document.createElement('button');
-    btn.className = 'athlete-btn'+(i===currentAthleteIdx?' active':'');
-    btn.textContent = `#${a.number} ${a.name.split('.')[1]||a.name}`.trim();
-    btn.onclick = () => selectAthlete(i);
-    wrap.appendChild(btn);
-  });
+function buildAthleteBtns(data) {
+const src = data || getActiveData();
+const wrap = document.getElementById('athlete-btns');
+wrap.style.display='flex'; wrap.style.gap='6px'; wrap.innerHTML='';
+src.athletes.forEach((a,i) => {
+const btn = document.createElement('button');
+btn.className = 'athlete-btn'+(i===currentAthleteIdx?' active':'');
+btn.textContent = `#${a.number} ${a.name.split('.')[1]||a.name}`.trim();
+btn.onclick = () => selectAthlete(i);
+wrap.appendChild(btn);
+});
 }
 
 function buildDayBtns(athlete) {
-  const wrap = document.getElementById('day-btns');
-  wrap.innerHTML='';
-  Object.keys(athlete.days).sort().forEach(d => {
-    const btn = document.createElement('button');
-    btn.className = 'day-btn'+(d===currentDayKey?' active':'');
-    const date = new Date(d+'T12:00:00');
-    btn.textContent = date.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
-    btn.onclick = () => selectDay(d);
-    wrap.appendChild(btn);
-  });
+const wrap = document.getElementById('day-btns');
+wrap.innerHTML='';
+Object.keys(athlete.days).sort().forEach(d => {
+const btn = document.createElement('button');
+btn.className = 'day-btn'+(d===currentDayKey?' active':'');
+const date = new Date(d+'T12:00:00');
+btn.textContent = date.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
+btn.onclick = () => selectDay(d);
+wrap.appendChild(btn);
+});
 }
 
 function selectAthlete(idx) {
-  currentAthleteIdx = idx;
-  alertsDismissed   = false;
-  const athlete = BIOMON_DATA.athletes[idx];
-  const days    = Object.keys(athlete.days).sort();
-  currentDayKey = days[days.length-1];
-  buildAthleteBtns();
-  buildDayBtns(athlete);
-  renderAthleteInfo(athlete);
-  renderAll();
+currentAthleteIdx=idx; alertsDismissed=false;
+const data = getActiveData();
+const athlete = data.athletes[idx];
+const days = Object.keys(athlete.days).sort();
+currentDayKey = days[days.length-1];
+buildAthleteBtns(); buildDayBtns(athlete);
+renderAthleteInfo(athlete); renderAll();
 }
 
 function selectDay(dayKey) {
-  currentDayKey   = dayKey;
-  alertsDismissed = false;
-  buildDayBtns(BIOMON_DATA.athletes[currentAthleteIdx]);
-  renderAll();
+currentDayKey=dayKey; alertsDismissed=false;
+buildDayBtns(getActiveData().athletes[currentAthleteIdx]);
+renderAll();
+}
+
+// =====================================================================
+// MODAL
+// =====================================================================
+function expandChart(key) {
+const cfg = chartConfigs[key];
+if (cfg) openModal(cfg.title, cfg.type, cfg.labels, cfg.datasets, cfg.opts);
+}
+
+function expandWeeklyChart(key, title, color) {
+const cfg = chartConfigs[key];
+if (cfg) { openModal(cfg.title||title, cfg.type, cfg.labels, cfg.datasets, cfg.opts); return; }
+const W = calcWeeklyAverages(getActiveData().athletes[currentAthleteIdx]);
+const L = W.dayLabels;
+let type='line', labels=L, datasets=[], opts={};
+const hr=parseInt(color.slice(1,3),16), hg=parseInt(color.slice(3,5),16), hb=parseInt(color.slice(5,7),16);
+const rgb=`rgb(${hr},${hg},${hb})`;
+const ML = multiLegOpts();
+
+if (key==='w-steps') { type='bar'; datasets=[{label:'Steps', data:W.steps.arr, backgroundColor:`rgba(${hr},${hg},${hb},0.5)`,borderColor:color,borderWidth:1,borderRadius:3}]; }
+else if (key==='w-calories') { type='bar'; datasets=[{label:'Calories', data:W.calories.arr, backgroundColor:`rgba(${hr},${hg},${hb},0.45)`,borderColor:color,borderWidth:1,borderRadius:3}]; }
+else if (key==='w-active') { datasets=[lineds('Active',W.active.arr,rgb),{label:'Goal (60)',data:L.map(()=>60),borderColor:'rgba(200,220,192,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}]; opts=ML; }
+else if (key==='w-hr') { datasets=[lineds('HR',W.hr.arr,rgb)]; }
+else if (key==='w-spo2') { datasets=[lineds('SpO2',W.spo2.arr,rgb)]; opts={scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}}; }
+else if (key==='w-bp') { datasets=[lineds('Systolic',W.sbp.arr,NC.alert,false),lineds('Diastolic',W.dbp.arr,NC.water2,false)]; opts=ML; }
+else if (key==='w-energy') { datasets=[lineds('Energy',W.energy.arr,rgb)]; }
+else if (key==='w-stress') { datasets=[lineds('Stress',W.stress.arr,rgb)]; }
+else if (key==='w-readiness') { datasets=[lineds('Readiness',W.readiness.arr,rgb)]; opts={scales:{y:{min:0,max:100,...CD.scales.y},x:CD.scales.x}}; }
+else if (key==='w-sleep') { type='bar'; datasets=[{label:'Deep',data:W.sleep_deep.arr,backgroundColor:'rgba(46,102,64,0.65)',borderRadius:3},{label:'Light',data:W.sleep_light.arr,backgroundColor:'rgba(74,136,120,0.5)',borderRadius:3},{label:'REM',data:W.sleep_rem.arr,backgroundColor:'rgba(90,170,114,0.55)',borderRadius:3}]; opts=ML; }
+else if (key==='w-apnea') { type='bar'; datasets=[{data:W.apnea.arr,backgroundColor:W.apnea.arr.map(v=>v>10?'rgba(176,48,40,0.65)':v>4?'rgba(184,140,48,0.55)':'rgba(61,140,88,0.55)'),borderRadius:3}]; }
+else if (key==='w-body') { datasets=[lineds('Body Fat %',W.body_fat.arr,NC.alert,false),lineds('Muscle kg',W.muscle_kg.arr,NC.green2,false),lineds('BMI',W.bmi.arr,NC.water,false)]; opts=ML; }
+else if (key==='w-antioxidant'){ datasets=[lineds('Antioxidant',W.antioxidant.arr,rgb)]; }
+else if (key==='w-sleep-deep') { datasets=[lineds('Deep Sleep',W.sleep_deep.arr,rgb)]; }
+else if (key==='w-sleep-light'){ datasets=[lineds('Light Sleep',W.sleep_light.arr,rgb)]; }
+else if (key==='w-sleep-rem') { datasets=[lineds('REM Sleep',W.sleep_rem.arr,rgb)]; }
+else if (key==='w-bodyfat') { datasets=[lineds('Body Fat %',W.body_fat.arr,rgb,false)]; }
+else if (key==='w-muscle') { datasets=[lineds('Muscle kg',W.muscle_kg.arr,rgb,false)]; }
+else if (key==='w-bmi') { datasets=[lineds('BMI',W.bmi.arr,rgb,false)]; }
+openModal(title, type, labels, datasets, opts);
+}
+
+function openModal(title, type, labels, datasets, opts={}) {
+document.getElementById('modal-title').textContent = title;
+document.getElementById('modal-stats').innerHTML = '';
+document.getElementById('modal-backdrop').classList.add('open');
+document.getElementById('modal-canvas-wrap').innerHTML = '<canvas id="modal-canvas"></canvas>';
+if (modalChart) { modalChart.destroy(); modalChart = null; }
+modalChart = new Chart(document.getElementById('modal-canvas'), {
+type, data:{labels,datasets},
+options:{
+...CD, ...opts,
+maintainAspectRatio:false,
+plugins:{...(opts.plugins||CD.plugins),legend:{...(opts.plugins?.legend||CD.plugins.legend)}},
+animation:{duration:400,easing:'easeInOutQuart'}
+}
+});
+}
+
+function closeModal(e) { if(e.target===document.getElementById('modal-backdrop')) closeModalBtn(); }
+function closeModalBtn() {
+document.getElementById('modal-backdrop').classList.remove('open');
+if (modalChart) { modalChart.destroy(); modalChart = null; }
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModalBtn(); document.getElementById('csv-modal-backdrop').classList.remove('open'); }});
+
+// =====================================================================
+// WEEKLY AVERAGES
+// =====================================================================
+function calcWeeklyAverages(athlete) {
+const days = Object.values(athlete.days);
+if (!days.length) return null;
+const n = days.length;
+const avg = fn => Math.round(days.reduce((s,d)=>s+fn(d.summary),0)/n*10)/10;
+const hi = fn => Math.max(...days.map(d=>fn(d.summary)));
+const lo = fn => Math.min(...days.map(d=>fn(d.summary)));
+const arr = fn => days.map(d=>fn(d.summary));
+const dayLabels = Object.keys(athlete.days).sort().map(k => {
+const date = new Date(k+'T12:00:00');
+return date.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'});
+});
+return {
+dayLabels,
+steps: {avg:avg(s=>s.steps), hi:hi(s=>s.steps), lo:lo(s=>s.steps), arr:arr(s=>s.steps), unit:'steps', label:'Steps'},
+calories: {avg:avg(s=>s.calories), hi:hi(s=>s.calories), lo:lo(s=>s.calories), arr:arr(s=>s.calories), unit:'kcal', label:'Calories'},
+active: {avg:avg(s=>s.active_minutes),hi:hi(s=>s.active_minutes),lo:lo(s=>s.active_minutes),arr:arr(s=>s.active_minutes),unit:'min', label:'Active Minutes'},
+hr: {avg:avg(s=>s.heart_rate), hi:hi(s=>s.heart_rate), lo:lo(s=>s.heart_rate), arr:arr(s=>s.heart_rate), unit:'bpm', label:'Heart Rate'},
+spo2: {avg:avg(s=>s.spo2), hi:hi(s=>s.spo2), lo:lo(s=>s.spo2), arr:arr(s=>s.spo2), unit:'%', label:'SpO2'},
+stress: {avg:avg(s=>s.stress), hi:hi(s=>s.stress), lo:lo(s=>s.stress), arr:arr(s=>s.stress), unit:'', label:'Stress Level'},
+sbp: {avg:avg(s=>s.sbp), hi:hi(s=>s.sbp), lo:lo(s=>s.sbp), arr:arr(s=>s.sbp), unit:'mmHg', label:'Systolic BP'},
+dbp: {avg:avg(s=>s.dbp), hi:hi(s=>s.dbp), lo:lo(s=>s.dbp), arr:arr(s=>s.dbp), unit:'mmHg', label:'Diastolic BP'},
+energy: {avg:avg(s=>s.energy), hi:hi(s=>s.energy), lo:lo(s=>s.energy), arr:arr(s=>s.energy), unit:'', label:'Energy Score'},
+antioxidant: {avg:avg(s=>s.antioxidant), hi:hi(s=>s.antioxidant), lo:lo(s=>s.antioxidant), arr:arr(s=>s.antioxidant), unit:'', label:'Antioxidant Index'},
+body_fat: {avg:avg(s=>s.body_fat), hi:hi(s=>s.body_fat), lo:lo(s=>s.body_fat), arr:arr(s=>s.body_fat), unit:'%', label:'Body Fat'},
+muscle_kg: {avg:avg(s=>s.muscle_kg), hi:hi(s=>s.muscle_kg), lo:lo(s=>s.muscle_kg), arr:arr(s=>s.muscle_kg), unit:'kg', label:'Muscle Mass'},
+bmi: {avg:avg(s=>s.bmi), hi:hi(s=>s.bmi), lo:lo(s=>s.bmi), arr:arr(s=>s.bmi), unit:'', label:'BMI'},
+sleep_deep: {avg:avg(s=>s.sleep_deep), hi:hi(s=>s.sleep_deep), lo:lo(s=>s.sleep_deep), arr:arr(s=>s.sleep_deep), unit:'hrs', label:'Deep Sleep'},
+sleep_light: {avg:avg(s=>s.sleep_light), hi:hi(s=>s.sleep_light), lo:lo(s=>s.sleep_light), arr:arr(s=>s.sleep_light), unit:'hrs', label:'Light Sleep'},
+sleep_rem: {avg:avg(s=>s.sleep_rem), hi:hi(s=>s.sleep_rem), lo:lo(s=>s.sleep_rem), arr:arr(s=>s.sleep_rem), unit:'hrs', label:'REM Sleep'},
+apnea: {avg:avg(s=>s.apnea_events), hi:hi(s=>s.apnea_events), lo:lo(s=>s.apnea_events), arr:arr(s=>s.apnea_events), unit:'events', label:'Apnea Events'},
+readiness: {avg:avg(s=>s.readiness), hi:hi(s=>s.readiness), lo:lo(s=>s.readiness), arr:arr(s=>s.readiness), unit:'', label:'Readiness Score'},
+};
+}
+
+function renderWeekly() {
+const data = getActiveData();
+const athlete = data.athletes[currentAthleteIdx];
+const W = calcWeeklyAverages(athlete);
+const L = W.dayLabels;
+const vis = ROLES[currentRole].visible;
+const wrap = document.getElementById('weekly-content');
+wrap.innerHTML = '';
+
+function statCard(stat, color, chartId) {
+return `
+<div class="weekly-stat-card" style="--card-color:${color}" onclick="expandWeeklyChart('${chartId}','${stat.label}','${color}')">
+<div class="weekly-stat-label">${stat.label} — 7-Day Avg</div>
+<div class="weekly-stat-value">${stat.avg}<span class="weekly-stat-unit">${stat.unit}</span></div>
+<div class="weekly-stat-sub">
+<span>High: <span class="hi">${stat.hi}${stat.unit}</span></span>
+<span>Low: <span class="lo">${stat.lo}${stat.unit}</span></span>
+</div>
+</div>`;
+}
+
+function section(title, inner) { wrap.innerHTML += `<div class="weekly-section-title">${title}</div>${inner}`; }
+const ML = multiLegOpts();
+
+if (['steps','calories','active'].some(k=>vis.includes(k))) {
+let h = '<div class="weekly-stat-grid">';
+if (vis.includes('steps')) h += statCard(W.steps, '#3d8c58','w-steps');
+if (vis.includes('calories')) h += statCard(W.calories,'#4a8878','w-calories');
+if (vis.includes('active')) h += statCard(W.active, '#5aaa72','w-active');
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+if (vis.includes('steps')) h += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-steps','Steps','#3d8c58')"><div class="card-header"><span class="card-title">Steps — Daily</span></div><canvas id="chart-w-steps"></canvas></div>`;
+if (vis.includes('calories')) h += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-calories','Calories','#4a8878')"><div class="card-header"><span class="card-title">Calories — Daily</span></div><canvas id="chart-w-calories"></canvas></div>`;
+if (vis.includes('active')) h += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-active','Active Minutes','#5aaa72')"><div class="card-header"><span class="card-title">Active Minutes — Daily</span></div><canvas id="chart-w-active"></canvas></div>`;
+h += '</div>';
+section('Activity &amp; Movement', h);
+}
+
+if (['hr','spo2','bp'].some(k=>vis.includes(k))) {
+let h = '<div class="weekly-stat-grid">';
+if (vis.includes('hr')) h += statCard(W.hr, '#2e6640','w-hr');
+if (vis.includes('spo2')) h += statCard(W.spo2,'#6ab8a8','w-spo2');
+if (vis.includes('bp')) h += `
+<div class="weekly-stat-card" style="--card-color:#5c7850" onclick="expandWeeklyChart('w-bp','Blood Pressure','#5c7850')">
+<div class="weekly-stat-label">Blood Pressure — 7-Day Avg</div>
+<div class="weekly-stat-value">${W.sbp.avg}/${W.dbp.avg}<span class="weekly-stat-unit">mmHg</span></div>
+<div class="weekly-stat-sub"><span>Sys Hi: <span class="hi">${W.sbp.hi}</span></span><span>Dia Lo: <span class="lo">${W.dbp.lo}</span></span></div>
+</div>`;
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+if (vis.includes('hr')) h += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-hr','Heart Rate','#2e6640')"><div class="card-header"><span class="card-title">Heart Rate — Daily</span></div><canvas id="chart-w-hr"></canvas></div>`;
+if (vis.includes('spo2')) h += `<div class="chart-card col-6" onclick="expandWeeklyChart('w-spo2','SpO2','#6ab8a8')"><div class="card-header"><span class="card-title">SpO2 — Daily</span></div><canvas id="chart-w-spo2"></canvas></div>`;
+if (vis.includes('bp')) h += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-bp','Blood Pressure','#5c7850')"><div class="card-header"><span class="card-title">Blood Pressure — Daily</span></div><canvas id="chart-w-bp"></canvas></div>`;
+h += '</div>';
+section('Cardiovascular', h);
+}
+
+if (['energy','stress','readiness'].some(k=>vis.includes(k))) {
+let h = '<div class="weekly-stat-grid">';
+if (vis.includes('energy')) h += statCard(W.energy, '#84c898','w-energy');
+if (vis.includes('stress')) h += statCard(W.stress, '#7a9880','w-stress');
+if (vis.includes('readiness'))h += statCard(W.readiness,'#5aaa72','w-readiness');
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+if (vis.includes('energy')) h += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-energy','Energy Score','#84c898')"><div class="card-header"><span class="card-title">Energy — Daily</span></div><canvas id="chart-w-energy"></canvas></div>`;
+if (vis.includes('stress')) h += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-stress','Stress Level','#7a9880')"><div class="card-header"><span class="card-title">Stress — Daily</span></div><canvas id="chart-w-stress"></canvas></div>`;
+if (vis.includes('readiness'))h += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-readiness','Readiness','#5aaa72')"><div class="card-header"><span class="card-title">Readiness — Daily</span></div><canvas id="chart-w-readiness"></canvas></div>`;
+h += '</div>';
+section('Wellbeing', h);
+}
+
+if (vis.includes('sleep') || vis.includes('apnea')) {
+let h = '<div class="weekly-stat-grid">';
+if (vis.includes('sleep')) {
+h += statCard(W.sleep_deep, '#2e6640','w-sleep-deep');
+h += statCard(W.sleep_light,'#4a8878','w-sleep-light');
+h += statCard(W.sleep_rem, '#5aaa72','w-sleep-rem');
+}
+if (vis.includes('apnea')) h += statCard(W.apnea,'#b03028','w-apnea');
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+if (vis.includes('sleep')) h += `<div class="chart-card col-8" onclick="expandWeeklyChart('w-sleep','Sleep Stages','#2e6640')"><div class="card-header"><span class="card-title">Sleep Stages — Daily</span></div><canvas id="chart-w-sleep"></canvas></div>`;
+if (vis.includes('apnea')) h += `<div class="chart-card col-4" onclick="expandWeeklyChart('w-apnea','Apnea Events','#b03028')"><div class="card-header"><span class="card-title">Apnea Events — Daily</span></div><canvas id="chart-w-apnea"></canvas></div>`;
+h += '</div>';
+section('Sleep', h);
+}
+
+if (vis.includes('body')) {
+let h = '<div class="weekly-stat-grid">';
+h += statCard(W.body_fat, '#b03028','w-bodyfat');
+h += statCard(W.muscle_kg,'#5aaa72','w-muscle');
+h += statCard(W.bmi, '#4a8878','w-bmi');
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+h += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-body','Body Composition','#5aaa72')"><div class="card-header"><span class="card-title">Body Composition — Weekly Trend</span></div><canvas id="chart-w-body"></canvas></div>`;
+h += '</div>';
+section('Body Composition', h);
+}
+
+if (vis.includes('antioxidant')) {
+let h = '<div class="weekly-stat-grid">';
+h += statCard(W.antioxidant,'#b88c30','w-antioxidant');
+h += '</div><div class="chart-grid" style="margin-bottom:20px">';
+h += `<div class="chart-card col-12" onclick="expandWeeklyChart('w-antioxidant','Antioxidant Index','#b88c30')"><div class="card-header"><span class="card-title">Antioxidant Index — Daily</span></div><canvas id="chart-w-antioxidant"></canvas></div>`;
+h += '</div>';
+section('Antioxidant Index', h);
+}
+
+setTimeout(() => {
+if (vis.includes('steps')) mkChart('chart-w-steps','bar',L,[{data:W.steps.arr,backgroundColor:'rgba(61,140,88,0.5)',borderColor:'#3d8c58',borderWidth:1,borderRadius:3}]);
+if (vis.includes('calories')) mkChart('chart-w-calories','bar',L,[{data:W.calories.arr,backgroundColor:'rgba(74,136,120,0.45)',borderColor:'#4a8878',borderWidth:1,borderRadius:3}]);
+if (vis.includes('active')) mkChart('chart-w-active','line',L,[lineds('Active',W.active.arr,NC.green2),{label:'Goal',data:L.map(()=>60),borderColor:'rgba(200,220,192,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}],ML);
+if (vis.includes('hr')) mkChart('chart-w-hr','line',L,[lineds('HR',W.hr.arr,NC.moss)]);
+if (vis.includes('spo2')) mkChart('chart-w-spo2','line',L,[lineds('SpO2',W.spo2.arr,NC.water2)],{scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}});
+if (vis.includes('bp')) mkChart('chart-w-bp','line',L,[lineds('Systolic',W.sbp.arr,NC.alert,false),lineds('Diastolic',W.dbp.arr,NC.water2,false)],ML);
+if (vis.includes('energy')) mkChart('chart-w-energy','line',L,[lineds('Energy',W.energy.arr,NC.green3)]);
+if (vis.includes('stress')) mkChart('chart-w-stress','line',L,[lineds('Stress',W.stress.arr,NC.stone)]);
+if (vis.includes('readiness'))mkChart('chart-w-readiness','line',L,[lineds('Readiness',W.readiness.arr,NC.green2)],{scales:{y:{min:0,max:100,...CD.scales.y},x:CD.scales.x}});
+if (vis.includes('sleep')) mkChart('chart-w-sleep','bar',L,[{label:'Deep',data:W.sleep_deep.arr,backgroundColor:'rgba(46,102,64,0.65)',borderRadius:3},{label:'Light',data:W.sleep_light.arr,backgroundColor:'rgba(74,136,120,0.5)',borderRadius:3},{label:'REM',data:W.sleep_rem.arr,backgroundColor:'rgba(90,170,114,0.55)',borderRadius:3}],ML);
+if (vis.includes('apnea')) mkChart('chart-w-apnea','bar',L,[{data:W.apnea.arr,backgroundColor:W.apnea.arr.map(v=>v>10?'rgba(176,48,40,0.65)':v>4?'rgba(184,140,48,0.55)':'rgba(61,140,88,0.55)'),borderRadius:3}]);
+if (vis.includes('body')) mkChart('chart-w-body','line',L,[lineds('Body Fat %',W.body_fat.arr,NC.alert,false),lineds('Muscle kg',W.muscle_kg.arr,NC.green2,false),lineds('BMI',W.bmi.arr,NC.water,false)],ML);
+if (vis.includes('antioxidant'))mkChart('chart-w-antioxidant','line',L,[lineds('Antioxidant',W.antioxidant.arr,NC.amber)]);
+}, 50);
 }
 
 // =====================================================================
 // MAIN RENDER
 // =====================================================================
-function renderAll() {
-  const athlete = BIOMON_DATA.athletes[currentAthleteIdx];
-  const dayData = athlete.days[currentDayKey];
-  if (!dayData) return;
-  const S = dayData.summary;
-  const T = dayData.timeline;
-  const L = T.labels;
+function renderAll(dataOverride) {
+const data = dataOverride || getActiveData();
+const athlete = data.athletes[currentAthleteIdx];
+const dayData = athlete.days[currentDayKey];
+if (!dayData) return;
+const S = dayData.summary;
+const T = dayData.timeline;
+const L = T.labels;
+const ML = multiLegOpts();
 
-  const alerts = checkAlerts(S);
-  renderAlerts(alerts);
-  buildKPIs(S, alerts);
+const alerts = checkAlerts(S);
+renderAlerts(alerts);
+buildKPIs(S, alerts);
 
-  const fallEl = document.getElementById('fall-alert');
-  if (S.fall) {
-    fallEl.classList.remove('hidden');
-    document.getElementById('fall-time').textContent = currentDayKey+' — detected during session';
-  } else {
-    fallEl.classList.add('hidden');
-  }
+const fallEl = document.getElementById('fall-alert');
+if (S.fall) {
+fallEl.classList.remove('hidden');
+document.getElementById('fall-time').textContent = currentDayKey + ' — detected during session';
+} else { fallEl.classList.add('hidden'); }
 
-  // helper to register + draw
-  function mk(key, title, id, type, labels, datasets, opts={}) {
-    registerChart(key, type, labels, datasets, opts, title);
-    mkChart(id, type, labels, datasets, opts);
-  }
+function mk(key, title, id, type, labels, datasets, opts={}) {
+registerChart(key, type, labels, datasets, opts, title);
+mkChart(id, type, labels, datasets, opts);
+}
 
-  // ── OVERVIEW ──
-  document.getElementById('hr-badge').textContent    = `${S.heart_rate} bpm`;
-  document.getElementById('steps-badge').textContent = `${S.steps.toLocaleString()} steps`;
-  document.getElementById('cal-badge').textContent   = `${S.calories.toLocaleString()} kcal`;
+// OVERVIEW
+document.getElementById('hr-badge').textContent = `${S.heart_rate} bpm`;
+document.getElementById('steps-badge').textContent = `${S.steps.toLocaleString()} steps`;
+document.getElementById('cal-badge').textContent = `${S.calories.toLocaleString()} kcal`;
 
-  const eEl = document.getElementById('energy-big');
-  eEl.textContent = S.energy;
-  eEl.className   = 'readiness-score '+(S.energy>=80?'high':S.energy>=60?'medium':'low');
-  document.getElementById('energy-label').textContent =
-    S.energy>=80?'Excellent — Ready to train hard':S.energy>=60?'Good — Normal training OK':'Low — Rest recommended';
+const eEl = document.getElementById('energy-big');
+eEl.textContent = S.energy;
+eEl.className = 'readiness-score '+(S.energy>=80?'high':S.energy>=60?'medium':'low');
+document.getElementById('energy-label').textContent =
+S.energy>=80?'Excellent — Ready to train hard':S.energy>=60?'Good — Normal training':'Low — Rest recommended';
 
-  mk('hr',       'Heart Rate',       'chart-hr',      'line',L,[lineds('HR',T.hrData,'rgb(255,77,109)')]);
-  mk('energy',   'Energy Score',     'chart-energy',  'line',L,[lineds('Energy',T.energyData,'rgb(255,214,10)')],{scales:{x:{display:false},y:{display:false}}});
-  mk('steps',    'Steps',            'chart-steps',   'bar', L,[{label:'Steps',data:T.stepsData,backgroundColor:'rgba(0,212,255,0.6)',borderColor:'#00d4ff',borderWidth:1,borderRadius:3}]);
-  mk('calories', 'Calories Burned',  'chart-calories','bar', L,[{label:'Calories',data:T.calData,backgroundColor:'rgba(255,214,10,0.5)',borderColor:'#ffd60a',borderWidth:1,borderRadius:3}]);
-  mk('spo2',     'Blood Oxygen SpO2','chart-spo2',    'line',L,[lineds('SpO2',T.spo2Data,'rgb(0,212,255)')],{scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}});
-  mk('stress',   'Stress Level',     'chart-stress',  'line',L,[lineds('Stress',T.stressData,'rgb(191,90,242)')]);
-  mk('active',   'Active Minutes',   'chart-active',  'bar', L,[{label:'Active',data:T.activeData,backgroundColor:'rgba(0,255,157,0.5)',borderColor:'#00ff9d',borderWidth:1,borderRadius:3}]);
+mk('hr', 'Heart Rate', 'chart-hr', 'line',L,[lineds('HR',T.hrData,NC.moss)]);
+mk('energy', 'Energy Score', 'chart-energy', 'line',L,[lineds('Energy',T.energyData,NC.green3)],{scales:{x:{display:false},y:{display:false}}});
+mk('steps', 'Steps', 'chart-steps', 'bar', L,[{label:'Steps',data:T.stepsData,backgroundColor:'rgba(61,140,88,0.5)',borderColor:NC.green,borderWidth:1,borderRadius:3}]);
+mk('calories', 'Calories Burned', 'chart-calories','bar', L,[{label:'Calories',data:T.calData,backgroundColor:'rgba(74,136,120,0.45)',borderColor:NC.water,borderWidth:1,borderRadius:3}]);
+mk('spo2', 'Blood Oxygen SpO2', 'chart-spo2', 'line',L,[lineds('SpO2',T.spo2Data,NC.water2)],{scales:{y:{min:93,max:101,...CD.scales.y},x:CD.scales.x}});
+mk('stress', 'Stress Level', 'chart-stress', 'line',L,[lineds('Stress',T.stressData,NC.stone)]);
+mk('active', 'Active Minutes', 'chart-active', 'bar', L,[{label:'Active',data:T.activeData,backgroundColor:'rgba(90,170,114,0.45)',borderColor:NC.green2,borderWidth:1,borderRadius:3}]);
 
-  // ── VITALS ──
-  mk('ecg','ECG Waveform','chart-ecg','line',athlete.ecg.map((_,i)=>i),[{
-    data:athlete.ecg,borderColor:'#00ff9d',backgroundColor:'rgba(0,255,157,0.04)',
-    borderWidth:1.5,pointRadius:0,tension:0.1,fill:true
-  }],{scales:{x:{display:false},y:{grid:{color:'rgba(30,48,72,0.3)'},ticks:{color:'#4a6a8a',font:{size:9}}}},animation:{duration:300}});
+// VITALS
+mk('ecg','ECG Waveform','chart-ecg','line',athlete.ecg.map((_,i)=>i),[{
+data:athlete.ecg, borderColor:NC.green2, backgroundColor:'rgba(90,170,114,0.05)',
+borderWidth:1.5, pointRadius:0, tension:0.1, fill:true
+}],{scales:{x:{display:false},y:{grid:{color:'rgba(28,51,36,0.4)'},ticks:{color:'#3e6048',font:{size:9}}}},animation:{duration:300}});
 
-  const bpBadge = document.getElementById('bp-badge');
-  bpBadge.textContent = `${S.sbp}/${S.dbp} mmHg`;
-  bpBadge.className   = `card-badge${S.sbp>BIOMON_DATA.thresholds.sbp_high?' red':''}`;
+const bpBadge = document.getElementById('bp-badge');
+bpBadge.textContent = `${S.sbp}/${S.dbp} mmHg`;
+bpBadge.className = `card-badge${S.sbp>BIOMON_DATA.thresholds.sbp_high?' red':''}`;
+mk('bp','Blood Pressure','chart-bp','line',L,[lineds('Systolic',T.sbpData,NC.alert,false),lineds('Diastolic',T.dbpData,NC.water2,false)],ML);
 
-  const bpDS = [lineds('Systolic',T.sbpData,'rgb(255,77,109)',false),lineds('Diastolic',T.dbpData,'rgb(0,212,255)',false)];
-  const bpOpts = {plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}};
-  mk('bp','Blood Pressure','chart-bp','line',L,bpDS,bpOpts);
+mk('hrzone','HR Zone Distribution','chart-hrzone','doughnut',athlete.hr_zones.labels,[{
+data:athlete.hr_zones.minutes,
+backgroundColor:['rgba(46,102,64,0.75)','rgba(61,140,88,0.7)','rgba(74,136,120,0.7)','rgba(90,170,114,0.65)','rgba(132,200,152,0.7)'],
+borderColor:'rgba(6,13,9,0.6)', borderWidth:2
+}],{
+cutout:'65%',scales:{x:{display:false},y:{display:false}},
+plugins:{...CD.plugins,legend:{display:true,position:'right',labels:{color:'#94b898',font:{family:"'Crimson Pro',serif",size:11}}}}
+});
 
-  const zoneDS = [{data:athlete.hr_zones.minutes,backgroundColor:['rgba(0,212,255,0.7)','rgba(0,255,157,0.7)','rgba(255,214,10,0.7)','rgba(255,165,0,0.7)','rgba(255,77,109,0.7)'],borderColor:'rgba(0,0,0,0.5)',borderWidth:2}];
-  const zoneOpts = {cutout:'65%',scales:{x:{display:false},y:{display:false}},plugins:{...CD.plugins,legend:{display:true,position:'right',labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif",size:11}}}}};
-  mk('hrzone','HR Zone Distribution','chart-hrzone','doughnut',athlete.hr_zones.labels,zoneDS,zoneOpts);
-  mk('hr24','Heart Rate — Hourly','chart-hr24','line',T.labels,[lineds('HR',T.hrData,'rgb(255,77,109)')]);
+mk('hr24','Heart Rate — Hourly','chart-hr24','line',T.labels,[lineds('HR',T.hrData,NC.moss)]);
 
-  document.getElementById('anti-num').textContent   = S.antioxidant;
-  document.getElementById('anti-badge').textContent = S.antioxidant>=55?'Optimal':'Low';
-  document.getElementById('anti-bar').style.width   = S.antioxidant+'%';
-  mk('antioxidant','Antioxidant Index','chart-antioxidant','line',L,[lineds('Carotenoids',T.antiData,'rgb(255,214,10)')],{scales:{x:{display:false},y:{display:false}}});
+document.getElementById('anti-num').textContent = S.antioxidant;
+document.getElementById('anti-badge').textContent = S.antioxidant>=55?'Optimal':'Low';
+document.getElementById('anti-bar').style.width = S.antioxidant+'%';
+mk('antioxidant','Antioxidant Index','chart-antioxidant','line',L,[lineds('Carotenoids',T.antiData,NC.amber)],{scales:{x:{display:false},y:{display:false}}});
 
-  // ── RECOVERY ──
-  const total = +(S.sleep_deep+S.sleep_light+S.sleep_rem).toFixed(1);
-  document.getElementById('sleep-total-badge').textContent = `${total} hrs`;
+// RECOVERY
+const total = +(S.sleep_deep+S.sleep_light+S.sleep_rem).toFixed(1);
+document.getElementById('sleep-total-badge').textContent = `${total} hrs`;
 
-  const sleepDS = [{data:[S.sleep_deep,S.sleep_light,S.sleep_rem],backgroundColor:['rgba(191,90,242,0.7)','rgba(0,212,255,0.5)','rgba(0,255,157,0.6)'],borderColor:['#bf5af2','#00d4ff','#00ff9d'],borderWidth:1,borderRadius:4}];
-  mk('sleep','Sleep Stages','chart-sleep','bar',['Deep','Light','REM'],sleepDS,{indexAxis:'y'});
+mk('sleep','Sleep Stages','chart-sleep','bar',['Deep','Light','REM'],[{
+data:[S.sleep_deep,S.sleep_light,S.sleep_rem],
+backgroundColor:['rgba(46,102,64,0.7)','rgba(74,136,120,0.55)','rgba(90,170,114,0.6)'],
+borderColor:[NC.moss,NC.water,NC.green2], borderWidth:1, borderRadius:4
+}],{indexAxis:'y'});
 
-  document.getElementById('sleep-bars').innerHTML = `
-    <div class="sleep-stage-row">
-      <span class="sleep-stage-label">DEEP</span>
-      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_deep/8*100}%;background:#bf5af2"></div></div>
-      <span class="sleep-stage-val">${S.sleep_deep}h</span>
-    </div>
-    <div class="sleep-stage-row">
-      <span class="sleep-stage-label">LIGHT</span>
-      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_light/8*100}%;background:#00d4ff"></div></div>
-      <span class="sleep-stage-val">${S.sleep_light}h</span>
-    </div>
-    <div class="sleep-stage-row">
-      <span class="sleep-stage-label">REM</span>
-      <div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_rem/8*100}%;background:#00ff9d"></div></div>
-      <span class="sleep-stage-val">${S.sleep_rem}h</span>
-    </div>`;
+document.getElementById('sleep-bars').innerHTML = `
+<div class="sleep-stage-row">
+<span class="sleep-stage-label">Deep</span>
+<div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_deep/8*100}%;background:${NC.moss}"></div></div>
+<span class="sleep-stage-val">${S.sleep_deep}h</span>
+</div>
+<div class="sleep-stage-row">
+<span class="sleep-stage-label">Light</span>
+<div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_light/8*100}%;background:${NC.water}"></div></div>
+<span class="sleep-stage-val">${S.sleep_light}h</span>
+</div>
+<div class="sleep-stage-row">
+<span class="sleep-stage-label">REM</span>
+<div class="sleep-bar-bg"><div class="sleep-bar-fill" style="width:${S.sleep_rem/8*100}%;background:${NC.green2}"></div></div>
+<span class="sleep-stage-val">${S.sleep_rem}h</span>
+</div>`;
 
-  const apneaBadge = document.getElementById('apnea-badge');
-  apneaBadge.textContent = `${S.apnea_events} events`;
-  apneaBadge.className   = `card-badge${S.apnea_events>BIOMON_DATA.thresholds.apnea_high?' red':''}`;
-  mk('apnea','Sleep Apnea Events','chart-apnea','bar',L,
-    [{data:T.apneaData,backgroundColor:T.apneaData.map(v=>v>BIOMON_DATA.thresholds.apnea_high?'rgba(255,77,109,0.7)':v>4?'rgba(255,214,10,0.6)':'rgba(0,255,157,0.6)'),borderRadius:3}]);
+const apneaBadge = document.getElementById('apnea-badge');
+apneaBadge.textContent = `${S.apnea_events} events`;
+apneaBadge.className = `card-badge${S.apnea_events>BIOMON_DATA.thresholds.apnea_high?' red':''}`;
+mk('apnea','Sleep Apnea Events','chart-apnea','bar',L,[{
+data:T.apneaData,
+backgroundColor:T.apneaData.map(v=>v>BIOMON_DATA.thresholds.apnea_high?'rgba(176,48,40,0.65)':v>4?'rgba(184,140,48,0.55)':'rgba(61,140,88,0.55)'),
+borderRadius:3
+}]);
 
-  const phaseClasses={Menstrual:'phase-1',Follicular:'phase-2',Ovulation:'phase-3',Luteal:'phase-4'};
-  const pill = document.getElementById('cycle-phase-pill');
-  if (S.menstrual_phase==='N/A') {
-    pill.textContent='N/A'; pill.className='phase-pill phase-2';
-    document.getElementById('cycle-days-info').textContent='Not applicable';
-  } else {
-    pill.textContent=S.menstrual_phase;
-    pill.className='phase-pill '+(phaseClasses[S.menstrual_phase]||'phase-2');
-    document.getElementById('cycle-days-info').textContent=`Day ${S.cycle_day} of cycle · ${28-S.cycle_day} days to next period`;
-  }
-  const cycleDS = [{data:[5,8,3,12],backgroundColor:['rgba(255,77,109,0.7)','rgba(0,212,255,0.5)','rgba(0,255,157,0.7)','rgba(191,90,242,0.5)'],borderWidth:2,borderColor:'rgba(0,0,0,0.5)'}];
-  mk('cycle','Menstrual Cycle','chart-cycle','doughnut',['Menstrual','Follicular','Ovulation','Luteal'],cycleDS,
-    {cutout:'70%',scales:{x:{display:false},y:{display:false}},plugins:{...CD.plugins,legend:{display:true,position:'right',labels:{color:'#c8d8f0',font:{size:10}}}}});
+const phaseClasses={Menstrual:'phase-1',Follicular:'phase-2',Ovulation:'phase-3',Luteal:'phase-4'};
+const pill = document.getElementById('cycle-phase-pill');
+if (S.menstrual_phase==='N/A') {
+pill.textContent='N/A'; pill.className='phase-pill phase-2';
+document.getElementById('cycle-days-info').textContent='Not applicable';
+} else {
+pill.textContent=S.menstrual_phase;
+pill.className='phase-pill '+(phaseClasses[S.menstrual_phase]||'phase-2');
+document.getElementById('cycle-days-info').textContent=`Day ${S.cycle_day} of cycle · ${28-S.cycle_day} days to next`;
+}
+mk('cycle','Menstrual Cycle','chart-cycle','doughnut',['Menstrual','Follicular','Ovulation','Luteal'],[{
+data:[5,8,3,12],
+backgroundColor:['rgba(176,48,40,0.65)','rgba(61,140,88,0.55)','rgba(74,136,120,0.65)','rgba(184,140,48,0.55)'],
+borderWidth:2, borderColor:'rgba(6,13,9,0.6)'
+}],{cutout:'70%',scales:{x:{display:false},y:{display:false}},plugins:{...CD.plugins,legend:{display:true,position:'right',labels:{color:'#94b898',font:{size:10}}}}});
 
-  document.getElementById('bc-fat').textContent    = S.body_fat+'%';
-  document.getElementById('bc-muscle').textContent = S.muscle_kg+' kg';
-  document.getElementById('bc-bmi').textContent    = S.bmi;
+document.getElementById('bc-fat').textContent = S.body_fat+'%';
+document.getElementById('bc-muscle').textContent = S.muscle_kg+' kg';
+document.getElementById('bc-bmi').textContent = S.bmi;
+registerChart('body','Body Composition','bar',['Today'],[lineds('Body Fat%',[S.body_fat],NC.alert,false),lineds('Muscle kg',[S.muscle_kg],NC.green2,false),lineds('BMI',[S.bmi],NC.water,false)],ML);
 
-  const bodyBarDS = [
-    lineds('Body Fat%',  [S.body_fat],  'rgb(255,77,109)',false),
-    lineds('Muscle kg',  [S.muscle_kg], 'rgb(0,255,157)', false),
-    lineds('BMI',        [S.bmi],       'rgb(0,212,255)', false),
-  ];
-  registerChart('body','Body Composition','bar',['Today'],bodyBarDS,{plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0'}}}});
+const rEl = document.getElementById('readiness-big');
+rEl.textContent = S.readiness;
+rEl.className = 'readiness-score '+(S.readiness>=80?'high':S.readiness>=60?'medium':'low');
+mk('readiness','Readiness Score','chart-readiness','line',L,[lineds('Readiness',T.readinessData,NC.green2)],{scales:{x:{display:false},y:{min:0,max:100,...CD.scales.y}}});
 
-  const rEl = document.getElementById('readiness-big');
-  rEl.textContent = S.readiness;
-  rEl.className   = 'readiness-score '+(S.readiness>=80?'high':S.readiness>=60?'medium':'low');
-  mk('readiness','Readiness Score','chart-readiness','line',L,[lineds('Readiness',T.readinessData,'rgb(0,255,157)')],
-    {scales:{x:{display:false},y:{min:0,max:100,...CD.scales.y}}});
+// PERFORMANCE
+mk('radar','Performance Radar','chart-radar','radar',
+['Steps','Cardio','Sleep','Recovery','Stress Ctrl','Energy','SpO2'],[{
+data:[S.steps/130,T.activeData[T.activeData.length-1],total/8*100,S.readiness,100-S.stress,S.energy,(S.spo2-90)*10],
+borderColor:NC.green2, backgroundColor:'rgba(90,170,114,0.1)',
+borderWidth:2, pointBackgroundColor:NC.green2, pointRadius:4
+}],{
+scales:{r:{
+grid:{color:'rgba(28,51,36,0.6)'},
+pointLabels:{color:'#94b898',font:{family:"'Cinzel',serif",size:11}},
+angleLines:{color:'rgba(28,51,36,0.6)'},
+ticks:{display:false}, min:0, max:100
+}}, plugins:{legend:{display:false}}
+});
 
-  // ── PERFORMANCE ──
-  const radarDS = [{
-    data:[S.steps/130,T.activeData[T.activeData.length-1],total/8*100,S.readiness,100-S.stress,S.energy,(S.spo2-90)*10],
-    borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,0.1)',
-    borderWidth:2,pointBackgroundColor:'#00d4ff',pointRadius:4
-  }];
-  mk('radar','Performance Radar','chart-radar','radar',
-    ['Steps','Cardio','Sleep','Recovery','Stress Ctrl','Energy','SpO2'],radarDS,
-    {scales:{r:{grid:{color:'rgba(30,48,72,0.6)'},pointLabels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif",size:11}},angleLines:{color:'rgba(30,48,72,0.6)'},ticks:{display:false},min:0,max:100}},plugins:{legend:{display:false}}});
+mk('weekly-activity','Weekly Activity Summary','chart-weekly','bar',L,[
+{label:'Steps (÷100)',data:T.stepsData.map(v=>Math.round(v/100)),backgroundColor:'rgba(61,140,88,0.5)',borderRadius:3},
+{label:'Calories', data:T.calData,backgroundColor:'rgba(74,136,120,0.45)',borderRadius:3}
+],ML);
 
-  const weeklyDS = [
-    {label:'Steps (÷100)',data:T.stepsData.map(v=>Math.round(v/100)),backgroundColor:'rgba(0,212,255,0.6)',borderRadius:3},
-    {label:'Calories',    data:T.calData,                             backgroundColor:'rgba(255,214,10,0.5)',borderRadius:3}
-  ];
-  mk('weekly-activity','Weekly Activity Summary','chart-weekly','bar',L,weeklyDS,
-    {plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}});
+mk('active-trend','Active Minutes — Daily','chart-active-trend','line',L,[
+lineds('Active Minutes',T.activeData,NC.green2),
+{label:'Goal (60 min)',data:L.map(()=>60),borderColor:'rgba(200,220,192,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}
+],ML);
 
-  const activeTrendDS = [
-    lineds('Active Minutes',T.activeData,'rgb(0,255,157)'),
-    {label:'Goal (60 min)',data:L.map(()=>60),borderColor:'rgba(255,255,255,0.2)',borderDash:[6,3],borderWidth:1,pointRadius:0,fill:false}
-  ];
-  mk('active-trend','Active Minutes — Daily','chart-active-trend','line',L,activeTrendDS,
-    {plugins:{...CD.plugins,legend:{display:true,labels:{color:'#c8d8f0',font:{family:"'Rajdhani',sans-serif"}}}}});
-
-  applyRestrictions();
-
-  // Re-render weekly if that tab is active
-  if (document.getElementById('view-weekly').classList.contains('active')) {
-    renderWeekly();
-  }
+applyRestrictions();
+if (document.getElementById('view-weekly').classList.contains('active')) renderWeekly();
 }
 
 // =====================================================================
-// ROLE & VIEW SWITCHING
+// ROLE & VIEW
 // =====================================================================
 function setRole(role) {
-  currentRole = role;
-  document.querySelectorAll('.role-btn').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
-  const dayData = BIOMON_DATA.athletes[currentAthleteIdx].days[currentDayKey];
-  if (dayData) buildKPIs(dayData.summary, checkAlerts(dayData.summary));
-  applyRestrictions();
-  if (document.getElementById('view-weekly').classList.contains('active')) renderWeekly();
+currentRole = role;
+document.querySelectorAll('.role-btn').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
+const dayData = getActiveData().athletes[currentAthleteIdx].days[currentDayKey];
+if (dayData) buildKPIs(dayData.summary, checkAlerts(dayData.summary));
+applyRestrictions();
+if (document.getElementById('view-weekly').classList.contains('active')) renderWeekly();
 }
 
 function setView(view) {
-  const views = ['overview','vitals','recovery','performance','weekly'];
-  document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('view-'+view).classList.add('active');
-  document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',views[i]===view));
-  if (view==='weekly') renderWeekly();
+const views = ['overview','vitals','recovery','performance','weekly'];
+document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
+document.getElementById('view-'+view).classList.add('active');
+document.querySelectorAll('.view-tab').forEach((t,i)=>t.classList.toggle('active',views[i]===view));
+if (view==='weekly') renderWeekly();
 }
 
 function updateClock() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en',{hour12:false});
+document.getElementById('clock').textContent = new Date().toLocaleTimeString('en',{hour12:false});
 }
 
 // =====================================================================
 // INIT
 // =====================================================================
 function init() {
-  const athlete = BIOMON_DATA.athletes[0];
-  const days    = Object.keys(athlete.days).sort();
-  currentDayKey = days[days.length-1];
-  buildAthleteBtns();
-  buildDayBtns(athlete);
-  renderAthleteInfo(athlete);
-  renderAll();
-  setInterval(updateClock, 1000);
-  updateClock();
+const athlete = BIOMON_DATA.athletes[0];
+const days = Object.keys(athlete.days).sort();
+currentDayKey = days[days.length-1];
+buildAthleteBtns();
+buildDayBtns(athlete);
+renderAthleteInfo(athlete);
+renderAll();
+setInterval(updateClock, 1000);
+updateClock();
 }
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
+
 </body>
 </html>
